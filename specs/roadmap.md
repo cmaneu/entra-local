@@ -50,7 +50,7 @@ minimal Graph endpoints. Runs via `npm start` and Docker.
 
 | # | Feature | Description | UI | Dependencies | Status |
 |---|---------|-------------|----|--------------|--------|
-| 1 | Server, config & TLS foundation + scaffolding | HTTPS server with auto self-signed cert, config loading/validation, health endpoint; project scaffold with npm scripts (`dev`/`build`/`test`/`test:e2e`/`lint`/`typecheck`), a unit+integration test harness, a real-MSAL e2e harness (incl. headless browser), and CI pipeline | – | – | ⬜ |
+| 1 | Server, config & TLS foundation + scaffolding | HTTPS server with auto self-signed cert, config loading/validation, health endpoint; project scaffold with npm scripts (`dev`/`build`/`test`/`test:e2e`/`lint`/`typecheck`), a unit+integration test harness, a real-MSAL e2e harness (incl. headless browser), and CI pipeline | – | – | ✅ |
 | 2 | SQLite store, schema & seed | Repository layer, migrations, deterministic seed data | – | 1 | ⬜ |
 | 3 | Signing keys & JWKS endpoint | Persisted RSA key(s); `/discovery/v2.0/keys` so resource APIs verify tokens | – | 1, 2 | ⬜ |
 | 4 | OIDC discovery document | `.well-known/openid-configuration` driving MSAL auto-config | – | 1, 3 | ⬜ |
@@ -123,9 +123,6 @@ assume Iterations 1-2 are ✅ (every documented endpoint and config option exist
 ## Open Decisions
 | Decision | Resolve by |
 |----------|------------|
-| HTTP framework: Fastify vs Express | Feature #1 (foundation spec) |
-| SQLite driver: `better-sqlite3` vs `node:sqlite` | Feature #2 |
-| Portal hosting: share the API port or a separate port | Feature #1 |
 | Single-exe approach: Node SEA vs `pkg` | Before feature #17 |
 | Documentation tooling: Docusaurus / VitePress / MkDocs vs plain Markdown | Feature #22 |
 | Hosting for published docs (e.g. GitHub Pages) | Feature #22 |

@@ -1,0 +1,21 @@
+{
+  "host": "localhost",
+  "port": 8443,
+  "tenantId": "11111111-1111-1111-1111-111111111111",
+  "dbPath": "./data/entra-local.db",
+  "tls": {
+    "enabled": true,
+    "certDir": "./data/tls"
+  },
+  "requirePassword": false,
+  "tokenLifetimes": {
+    "authCode": 300,
+    "idToken": 3600,
+    "accessToken": 3600,
+    "refreshToken": 86400,
+    "deviceCode": 900
+  },
+  "deviceCodeInterval": 5,
+  "graphResourceId": "https://graph.microsoft.com",
+  "logLevel": "info"
+}

@@ -90,6 +90,38 @@ docker run -p 8443:8443 -v entra-local-data:/data entra-local
 Trust the emulator's self-signed certificate (or relax cert validation in dev) so MSAL can
 fetch the discovery document and JWKS over HTTPS.
 
+## Development
+
+The toolchain and project layout are established by roadmap feature #1
+([spec](specs/2026-06-22_01-server-config-tls-foundation.md)). Node **22.5+** is required
+(the persistence layer uses the built-in `node:sqlite`).
+
+```bash
+npm install        # install dependencies
+npm run dev        # run the server with reload (tsx watch)
+npm run build      # type-check + emit server to dist/ (+ portal placeholder)
+npm run typecheck  # tsc --noEmit across server + tests
+npm run lint       # eslint + prettier --check
+npm test           # unit + integration tests (vitest, in-process, deterministic)
+npm run test:e2e   # real-MSAL end-to-end suite (starts a real HTTPS server)
+npm start          # run the built server (node dist/index.js)
+```
+
+Configuration is loaded from environment variables → `entra-local.config.json` → built-in
+defaults (highest precedence first) and validated on startup; see
+[`.env.example`](.env.example) and
+[`entra-local.config.example.json`](entra-local.config.example.json) for the full reference.
+Invalid config aborts startup with a non-zero exit naming the offending key.
+
+Source layout: `src/` (server) with `config/` (zod validation), `tls/` (cert generation),
+`http/` (routing, path map, error handling); `test/` (`unit/`, `integration/`, `e2e/`,
+`helpers/`); `portal/` (admin portal, built in #12). Runtime state (SQLite DB + the persisted
+self-signed cert) lives under `data/` (gitignored).
+
+> **Browser e2e (`@azure/msal-browser` via Playwright)** is wired in the harness but gated
+> behind `E2E_BROWSER=1` until the interactive sign-in flow lands (#6), so `npm run test:e2e`
+> is green without a browser download.
+
 ## Documentation
 
 - 🗺️ **[Roadmap](specs/roadmap.md)** — iterations, MVP cut, dependencies, and deferred work.

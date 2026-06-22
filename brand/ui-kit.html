@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Entra Local — UI Kit</title>
+<!-- Component reference for DESIGN.md. Standalone HTML + Tailwind (CDN). Tokens via CSS variables.
+     Segoe UI from the system stack; Selawik + Cascadia Mono are self-hosted OFL (see brand-book.html note). -->
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @font-face { font-family:"Selawik"; src:url("./fonts/Selawik-Regular.woff2") format("woff2"); font-weight:400; font-display:swap; }
+  @font-face { font-family:"Cascadia Mono"; src:url("./fonts/CascadiaMono.woff2") format("woff2"); font-weight:400; font-display:swap; }
+  :root{
+    --primary-30:#004578;--primary-40:#005A9E;--primary-50:#106EBE;--primary-60:#0078D4;--primary-70:#2B88D8;--primary-90:#DEECF9;
+    --accent-40:#015A5D;--accent-60:#038387;
+    --caution-50:#F59E0B;--caution-80:#92400E;--caution-90:#FEF3C7;
+    --success-60:#107C10;--success-90:#DFF6DD;--error-60:#D13438;--error-80:#A4262C;--error-90:#FDE7E9;
+    --neutral-10:#201F1E;--neutral-20:#323130;--neutral-40:#605E5C;--neutral-60:#8A8886;--neutral-70:#C8C6C4;
+    --neutral-80:#E1DFDD;--neutral-85:#EDEBE9;--neutral-95:#FAF9F8;--neutral-100:#FFFFFF;
+    --surface:#FFFFFF;--surface-alt:#FAF9F8;--on-surface:#201F1E;
+    --font-ui:"Segoe UI","Selawik",system-ui,-apple-system,sans-serif;
+    --font-mono:"Cascadia Mono","Cascadia Code",ui-monospace,Consolas,monospace;
+    --r-md:4px;--r-lg:8px;
+    --depth-2:0 0.6px 1.8px rgba(0,0,0,.10),0 0.15px 0.45px rgba(0,0,0,.07);
+    --depth-8:0 1.6px 3.6px rgba(0,0,0,.13),0 0.3px 0.9px rgba(0,0,0,.11);
+    --depth-16:0 3.2px 7.2px rgba(0,0,0,.13),0 0.6px 1.8px rgba(0,0,0,.11);
+  }
+  body{font-family:var(--font-ui);color:var(--on-surface);background:var(--surface-alt);font-size:14px;}
+  .mono{font-family:var(--font-mono);}
+  .card{background:var(--surface);border:1px solid var(--neutral-80);border-radius:var(--r-md);box-shadow:var(--depth-2);}
+  .h{font-size:16px;font-weight:600;margin-bottom:12px;}
+  .lbl{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--neutral-40);}
+
+  /* Buttons */
+  .btn{font-size:14px;font-weight:600;height:32px;padding:0 20px;border-radius:var(--r-md);border:1px solid transparent;cursor:pointer;display:inline-flex;align-items:center;gap:8px;}
+  .btn:focus-visible{outline:2px solid var(--primary-60);outline-offset:1px;}
+  .btn-primary{background:var(--primary-60);color:#fff;}
+  .btn-primary.hover{background:var(--primary-50);} .btn-primary.active{background:var(--primary-40);}
+  .btn-primary.disabled{background:var(--neutral-85);color:var(--neutral-60);cursor:not-allowed;}
+  .btn-secondary{background:var(--surface);color:var(--neutral-20);border-color:var(--neutral-80);}
+  .btn-secondary.hover{background:var(--neutral-95);border-color:var(--neutral-70);color:var(--neutral-10);}
+  .btn-secondary.active{background:var(--neutral-85);} .btn-secondary.disabled{background:var(--neutral-95);color:var(--neutral-60);border-color:var(--neutral-85);cursor:not-allowed;}
+  .btn-destructive{background:var(--surface);color:var(--error-60);border-color:var(--error-60);}
+
+  .badge{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:var(--caution-50);color:var(--neutral-10);border-radius:var(--r-md);padding:3px 8px;display:inline-flex;gap:5px;align-items:center;}
+  .chip{font-family:var(--font-mono);font-size:12px;background:var(--neutral-95);border:1px solid var(--neutral-85);color:var(--neutral-20);border-radius:var(--r-md);padding:2px 8px;display:inline-flex;align-items:center;gap:6px;}
+
+  .input{height:32px;width:100%;border:1px solid var(--neutral-80);border-radius:var(--r-md);padding:6px 8px;font-size:14px;font-family:var(--font-ui);background:var(--surface);color:var(--neutral-10);}
+  .input:focus{outline:2px solid var(--primary-60);outline-offset:1px;}
+  .input.error{border-color:var(--error-60);} .input.disabled{background:var(--neutral-95);color:var(--neutral-60);}
+  .field-error{color:var(--error-80);font-size:12px;margin-top:4px;}
+
+  .banner{border-radius:var(--r-md);padding:10px 14px;font-size:13px;display:flex;gap:8px;}
+  .banner-caution{background:var(--caution-90);color:var(--caution-80);border-left:3px solid var(--caution-50);}
+  .banner-error{background:var(--error-90);color:var(--error-80);border-left:3px solid var(--error-60);}
+  .banner-success{background:var(--success-90);color:var(--success-60);border-left:3px solid var(--success-60);}
+
+  table.dt{width:100%;border-collapse:collapse;font-size:14px;background:var(--surface);}
+  table.dt th{font-size:12px;font-weight:600;color:var(--neutral-40);text-align:left;padding:10px 12px;border-bottom:1px solid var(--neutral-85);}
+  table.dt td{padding:10px 12px;border-bottom:1px solid var(--neutral-85);color:var(--neutral-10);}
+  table.dt tr.sel td{background:var(--primary-90);color:var(--primary-30);}
+  .toast{background:var(--neutral-10);color:#fff;border-radius:var(--r-md);padding:12px 16px;box-shadow:var(--depth-16);font-size:14px;display:inline-flex;gap:10px;align-items:center;}
+</style>
+</head>
+<body>
+<!-- Top bar -->
+<header style="height:48px;background:var(--surface);border-bottom:1px solid var(--neutral-85);" class="flex items-center gap-3 px-4">
+  <span class="font-semibold text-[16px]">Entra&nbsp;Local</span>
+  <span class="badge">▲ Local Emulator</span>
+  <span class="chip ml-2">localhost:8443 ⧉</span>
+  <span class="ml-auto flex items-center gap-2 text-[13px]"><span style="width:8px;height:8px;border-radius:9999px;background:var(--accent-60);display:inline-block"></span>Connected · TLS ok</span>
+</header>
+
+<div class="flex">
+  <!-- Side nav -->
+  <nav style="width:240px;background:var(--surface-alt);min-height:90vh;padding:8px;border-right:1px solid var(--neutral-85)">
+    <a class="block px-3 py-2 rounded text-[14px] font-semibold" style="background:var(--primary-90);color:var(--primary-30);border-left:2px solid var(--primary-60)">Dashboard</a>
+    <a class="block px-3 py-2 rounded text-[14px]" style="color:var(--neutral-20)">Users</a>
+    <a class="block px-3 py-2 rounded text-[14px]" style="color:var(--neutral-20)">Groups</a>
+    <a class="block px-3 py-2 rounded text-[14px]" style="color:var(--neutral-20)">App registrations</a>
+  </nav>
+
+  <main class="flex-1 p-8 space-y-8 max-w-[900px]">
+    <h1 class="text-[24px] font-semibold">UI Kit</h1>
+
+    <section class="card p-6">
+      <div class="h">Buttons — states</div>
+      <div class="lbl mb-2">Primary</div>
+      <div class="flex flex-wrap gap-3 items-center mb-4">
+        <button class="btn btn-primary">Default</button>
+        <button class="btn btn-primary hover">Hover</button>
+        <button class="btn btn-primary active">Active</button>
+        <button class="btn btn-primary" autofocus>Focus (tab to me)</button>
+        <button class="btn btn-primary disabled" disabled>Disabled</button>
+        <button class="btn btn-primary disabled" disabled><span class="spin">◌</span> Loading…</button>
+      </div>
+      <div class="lbl mb-2">Secondary</div>
+      <div class="flex flex-wrap gap-3 items-center mb-4">
+        <button class="btn btn-secondary">Default</button>
+        <button class="btn btn-secondary hover">Hover</button>
+        <button class="btn btn-secondary active">Active</button>
+        <button class="btn btn-secondary disabled" disabled>Disabled</button>
+        <button class="btn btn-secondary">⊕ With icon</button>
+      </div>
+      <div class="lbl mb-2">Destructive</div>
+      <button class="btn btn-destructive">Delete app</button>
+    </section>
+
+    <section class="card p-6">
+      <div class="h">Badge, banners &amp; identifier chips</div>
+      <div class="flex items-center gap-3 mb-4"><span class="badge">▲ Local Emulator</span><span class="text-[12px]" style="color:var(--neutral-40)">Not for production use</span></div>
+      <div class="space-y-2 mb-4">
+        <div class="banner banner-caution">⚠ Local emulator — tokens are not real and this server is intentionally insecure. Never use in production.</div>
+        <div class="banner banner-error">✕ A user with UPN <span class="mono">alice@contoso.local</span> already exists (409 conflict).</div>
+        <div class="banner banner-success">✓ Seed data restored — 4 users, 2 groups, 3 apps.</div>
+      </div>
+      <div class="lbl mb-2">Identifier chips (mono, copyable)</div>
+      <div class="flex flex-wrap gap-2">
+        <span class="chip">11111111-1111-1111-1111-111111111111 <span style="color:var(--primary-50)">⧉</span></span>
+        <span class="chip" style="background:var(--neutral-85)">22223333-aaaa-4444-bbbb-555566667777 <span style="color:var(--success-60)">✓ copied</span></span>
+        <span class="chip">User.Read ⧉</span>
+        <span class="chip">••••••••••  👁 ⧉</span>
+      </div>
+    </section>
+
+    <section class="card p-6">
+      <div class="h">Form fields — states</div>
+      <div class="grid sm:grid-cols-2 gap-5">
+        <div><label class="text-[14px] font-semibold block mb-1">Display name</label><input class="input" value="Alice Dev" /></div>
+        <div><label class="text-[14px] font-semibold block mb-1">Focus</label><input class="input" style="outline:2px solid var(--primary-60);outline-offset:1px" value="Focused" /></div>
+        <div><label class="text-[14px] font-semibold block mb-1">UPN</label><input class="input error" value="alice@contoso.local" aria-invalid="true" /><div class="field-error">This UPN is already in use.</div></div>
+        <div><label class="text-[14px] font-semibold block mb-1">Object ID (disabled)</label><input class="input disabled mono" value="server-assigned" disabled /></div>
+      </div>
+    </section>
+
+    <section class="card overflow-hidden">
+      <div class="h p-6 pb-0">Data table</div>
+      <table class="dt mt-3">
+        <thead><tr><th>Display name</th><th>UPN</th><th>Object ID</th><th>Enabled</th></tr></thead>
+        <tbody>
+          <tr><td>Alice Dev</td><td>alice@contoso.local</td><td><span class="chip">aaaa…7777 ⧉</span></td><td><span style="color:var(--success-60)">● Yes</span></td></tr>
+          <tr class="sel"><td>Bob Tester</td><td>bob@contoso.local</td><td><span class="chip">bbbb…8888 ⧉</span></td><td>Yes</td></tr>
+          <tr><td>Carol QA</td><td>carol@contoso.local</td><td><span class="chip">cccc…9999 ⧉</span></td><td><span style="color:var(--neutral-40)">○ No</span></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card p-6">
+      <div class="h">Empty state</div>
+      <div class="text-center py-8">
+        <div class="text-[24px] mb-2" style="color:var(--neutral-60)">▢</div>
+        <div class="text-[16px] font-semibold">No app registrations yet</div>
+        <div class="text-[12px] mb-4" style="color:var(--neutral-40)">Register an app to get a client ID and a ready-to-paste MSAL config.</div>
+        <button class="btn btn-primary mx-auto">New app</button>
+      </div>
+    </section>
+
+    <section>
+      <div class="lbl mb-2">Toast</div>
+      <span class="toast"><span style="color:var(--success-60)">✓</span> Client secret copied — you won't see it again.</span>
+    </section>
+  </main>
+</div>
+</body>
+</html>

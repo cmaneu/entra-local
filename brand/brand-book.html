@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Entra Local — Brand Book</title>
+<!--
+  Visual reference for DESIGN.md. Standalone HTML + Tailwind (CDN).
+  Colors/fonts are wired from DESIGN.md through the CSS variables in :root.
+  Fonts: Segoe UI is referenced from the SYSTEM stack only (never embedded).
+  Selawik + Cascadia Mono are OFL and meant to be self-hosted — drop the OFL
+  .woff2 files into ./fonts/ and the @font-face blocks below pick them up;
+  until then the system fonts (present on Windows) render the same look.
+-->
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  /* Self-hosted OFL web fonts (optional — see note above). */
+  @font-face { font-family:"Selawik"; src:url("./fonts/Selawik-Regular.woff2") format("woff2"); font-weight:400; font-display:swap; }
+  @font-face { font-family:"Selawik"; src:url("./fonts/Selawik-Semibold.woff2") format("woff2"); font-weight:600; font-display:swap; }
+  @font-face { font-family:"Cascadia Mono"; src:url("./fonts/CascadiaMono.woff2") format("woff2"); font-weight:400; font-display:swap; }
+
+  :root {
+    /* Primary — Azure blue */
+    --primary-30:#004578; --primary-40:#005A9E; --primary-50:#106EBE;
+    --primary-60:#0078D4; --primary-70:#2B88D8; --primary-90:#DEECF9;
+    /* Accent — teal */
+    --accent-40:#015A5D; --accent-60:#038387; --accent-70:#2AA0A4; --accent-90:#E0F2F2;
+    /* Caution — amber */
+    --caution-50:#F59E0B; --caution-70:#B45309; --caution-80:#92400E; --caution-90:#FEF3C7;
+    /* Success / Error */
+    --success-60:#107C10; --success-90:#DFF6DD;
+    --error-60:#D13438; --error-80:#A4262C; --error-90:#FDE7E9;
+    /* Neutral */
+    --neutral-10:#201F1E; --neutral-20:#323130; --neutral-40:#605E5C; --neutral-60:#8A8886;
+    --neutral-70:#C8C6C4; --neutral-80:#E1DFDD; --neutral-85:#EDEBE9; --neutral-95:#FAF9F8; --neutral-100:#FFFFFF;
+    --surface:#FFFFFF; --surface-alt:#FAF9F8; --on-surface:#201F1E;
+    /* Type */
+    --font-ui:"Segoe UI","Selawik",system-ui,-apple-system,sans-serif;
+    --font-mono:"Cascadia Mono","Cascadia Code",ui-monospace,Consolas,monospace;
+    /* Shape + depth */
+    --r-md:4px; --r-lg:8px;
+    --depth-2:0 0.6px 1.8px rgba(0,0,0,.10), 0 0.15px 0.45px rgba(0,0,0,.07);
+    --depth-8:0 1.6px 3.6px rgba(0,0,0,.13), 0 0.3px 0.9px rgba(0,0,0,.11);
+  }
+  body { font-family:var(--font-ui); color:var(--on-surface); background:var(--surface-alt); }
+  .mono { font-family:var(--font-mono); }
+  .card { background:var(--surface); border:1px solid var(--neutral-80); border-radius:var(--r-md); box-shadow:var(--depth-2); }
+  .swatch { height:72px; border-radius:var(--r-md) var(--r-md) 0 0; }
+  .chip { font-family:var(--font-mono); font-size:12px; background:var(--neutral-95); border:1px solid var(--neutral-85);
+          color:var(--neutral-20); border-radius:var(--r-md); padding:2px 8px; display:inline-flex; align-items:center; gap:6px; }
+  .badge { font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase;
+           background:var(--caution-50); color:var(--neutral-10); border-radius:var(--r-md); padding:3px 8px; display:inline-flex; gap:5px; align-items:center; }
+  h2 { font-weight:600; letter-spacing:-.005em; }
+</style>
+</head>
+<body class="min-h-screen">
+<header class="px-8 py-6 bg-[var(--surface)] border-b border-[var(--neutral-85)] flex items-center gap-3">
+  <span class="text-[20px] font-semibold">Entra&nbsp;Local</span>
+  <span class="badge">▲ Local Emulator</span>
+  <span class="ml-auto text-[12px]" style="color:var(--neutral-40)">Brand Book · DESIGN.md visual reference</span>
+</header>
+
+<main class="max-w-[1100px] mx-auto px-8 py-10 space-y-12">
+
+  <section>
+    <h2 class="text-[24px] mb-1">Identity</h2>
+    <p class="text-[14px] max-w-2xl" style="color:var(--neutral-40)">
+      Fluent-mimic. Entra Local deliberately resembles the real Entra/Azure experience — white surfaces,
+      restrained depth, ~4px corners, a Segoe type voice, Azure communication-blue actions — while the
+      persistent amber <strong style="color:var(--neutral-20)">LOCAL EMULATOR</strong> badge makes it
+      unmistakable that this is a local sandbox, never production and never Microsoft.
+    </p>
+  </section>
+
+  <!-- COLORS -->
+  <section>
+    <h2 class="text-[24px] mb-4">Colors</h2>
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4" id="palette"></div>
+  </section>
+
+  <!-- RAMPS -->
+  <section>
+    <h2 class="text-[24px] mb-4">Ramps &amp; tints</h2>
+    <div class="space-y-4" id="ramps"></div>
+  </section>
+
+  <!-- AA PAIRINGS -->
+  <section>
+    <h2 class="text-[24px] mb-4">AA-safe pairings</h2>
+    <div class="card overflow-hidden">
+      <table class="w-full text-[13px]">
+        <thead>
+          <tr style="color:var(--neutral-40)" class="text-left border-b border-[var(--neutral-85)]">
+            <th class="font-semibold p-3">Foreground</th><th class="font-semibold p-3">Background</th>
+            <th class="font-semibold p-3">Ratio</th><th class="font-semibold p-3">Sample</th>
+          </tr>
+        </thead>
+        <tbody id="pairings"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- TYPOGRAPHY -->
+  <section>
+    <h2 class="text-[24px] mb-4">Typography</h2>
+    <div class="card p-6 space-y-4">
+      <p class="text-[12px]" style="color:var(--neutral-40)">UI / body / display: <strong>Segoe UI</strong> (system) → Selawik (OFL, self-hosted) → system-ui. Mono: <strong>Cascadia Mono</strong> (OFL) for identifiers &amp; code.</p>
+      <div style="font-size:28px;font-weight:600;letter-spacing:-.01em">Display 28 / 600 — Sign in to Entra&nbsp;Local</div>
+      <div style="font-size:24px;font-weight:600">Headline-lg 24 / 600 — App registrations</div>
+      <div style="font-size:20px;font-weight:600">Headline-md 20 / 600 — Redirect URIs</div>
+      <div style="font-size:16px;font-weight:600">Headline-sm 16 / 600 — Client secrets</div>
+      <div style="font-size:16px">Body-lg 16 / 400 — Point your MSAL app's authority at the emulator.</div>
+      <div style="font-size:14px">Body-md 14 / 400 — The default UI body and table text size.</div>
+      <div style="font-size:12px;color:var(--neutral-40)">Body-sm 12 / 400 — Helper text and metadata. Not for production use.</div>
+      <div style="font-size:14px;font-weight:600">Label-md 14 / 600 — Buttons, form labels, navigation</div>
+      <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Label-caps 11 / 600 — Local Emulator badge</div>
+      <div class="mono" style="font-size:13px">code-md 13 — client_id = 22223333-aaaa-4444-bbbb-555566667777</div>
+    </div>
+  </section>
+
+  <!-- SIGNATURE PATTERNS -->
+  <section>
+    <h2 class="text-[24px] mb-4">Signature patterns</h2>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div class="card p-6">
+        <div class="text-[12px] mb-3" style="color:var(--neutral-40)">LOCAL EMULATOR badge — dark ink on amber (7.66:1). Never white-on-amber.</div>
+        <span class="badge">▲ Local Emulator</span>
+        <span class="ml-3 text-[12px]" style="color:var(--neutral-40)">Not for production use</span>
+        <div class="mt-4 text-[12px]" style="color:var(--neutral-40)">Banner variant:</div>
+        <div class="mt-2" style="background:var(--caution-90);color:var(--caution-80);border-left:3px solid var(--caution-50);border-radius:var(--r-md);padding:10px 14px;font-size:13px">
+          ⚠ This is a local emulator. Tokens are not real and this server is intentionally insecure — never use it in production.
+        </div>
+      </div>
+      <div class="card p-6">
+        <div class="text-[12px] mb-3" style="color:var(--neutral-40)">Identifier chip — Cascadia Mono, copyable. For GUIDs, IDs, secrets, scopes.</div>
+        <div class="flex flex-wrap gap-2">
+          <span class="chip">11111111-1111-1111-1111-111111111111 <span style="color:var(--primary-50)">⧉</span></span>
+          <span class="chip">client_id ⧉</span>
+          <span class="chip">User.Read ⧉</span>
+          <span class="chip">••••••••••••  👁</span>
+        </div>
+        <div class="mt-4 text-[12px]" style="color:var(--neutral-40)">Status dot — teal = connected/local/healthy.</div>
+        <div class="mt-2 flex items-center gap-2 text-[13px]">
+          <span style="width:8px;height:8px;border-radius:9999px;background:var(--accent-60);display:inline-block"></span> Connected · TLS ok
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="max-w-[1100px] mx-auto px-8 py-8 text-[12px]" style="color:var(--neutral-40)">
+  Entra Local is an independent developer tool, not affiliated with or endorsed by Microsoft. No Microsoft logos or trademarks are used as our own.
+</footer>
+
+<script>
+  const css = getComputedStyle(document.documentElement);
+  const v = n => css.getPropertyValue(n).trim();
+
+  // sRGB relative luminance + WCAG contrast
+  function lum(hex){const h=hex.replace('#','');const c=[0,2,4].map(i=>parseInt(h.substr(i,2),16)/255)
+    .map(x=>x<=0.03928?x/12.92:Math.pow((x+0.055)/1.055,2.4));return 0.2126*c[0]+0.7152*c[1]+0.0722*c[2];}
+  function cr(a,b){const L1=lum(a),L2=lum(b);const hi=Math.max(L1,L2),lo=Math.min(L1,L2);return ((hi+0.05)/(lo+0.05));}
+
+  const roles = [
+    ['Primary · Azure Blue','--primary-60','#FFFFFF','Buttons, links, active nav'],
+    ['Accent · Fluent Teal','--accent-60','#FFFFFF','Highlights, status/local dot'],
+    ['Caution · Amber','--caution-50','#201F1E','LOCAL EMULATOR badge, warnings'],
+    ['Success · Green','--success-60','#FFFFFF','Confirmation, healthy'],
+    ['Error · Red','--error-60','#FFFFFF','Validation, destructive'],
+    ['Neutral · Ink','--neutral-10','#FFFFFF','Primary text & dark surfaces'],
+  ];
+  document.getElementById('palette').innerHTML = roles.map(([name,varn,ink,use])=>{
+    const hex=v(varn);
+    return `<div class="card overflow-hidden">
+      <div class="swatch" style="background:${hex};color:${ink};display:flex;align-items:flex-end;padding:8px;font-size:12px">${ink==='#FFFFFF'?'White text':'Dark ink'}</div>
+      <div class="p-3">
+        <div class="text-[14px] font-semibold">${name}</div>
+        <div class="mono text-[12px]" style="color:var(--neutral-40)">${hex.toUpperCase()}</div>
+        <div class="text-[12px] mt-1" style="color:var(--neutral-40)">${use}</div>
+      </div></div>`;
+  }).join('');
+
+  const ramps = {
+    'Primary (Azure blue)':['--primary-30','--primary-40','--primary-50','--primary-60','--primary-70','--primary-90'],
+    'Accent (teal)':['--accent-40','--accent-60','--accent-70','--accent-90'],
+    'Caution (amber)':['--caution-80','--caution-70','--caution-50','--caution-90'],
+    'Neutral (grays)':['--neutral-10','--neutral-20','--neutral-40','--neutral-60','--neutral-70','--neutral-80','--neutral-85','--neutral-95','--neutral-100'],
+  };
+  document.getElementById('ramps').innerHTML = Object.entries(ramps).map(([name,arr])=>`
+    <div><div class="text-[13px] font-semibold mb-1">${name}</div>
+    <div class="flex rounded overflow-hidden border border-[var(--neutral-80)]">
+      ${arr.map(varn=>`<div style="flex:1;height:48px;background:${v(varn)}" title="${varn} ${v(varn)}"></div>`).join('')}
+    </div>
+    <div class="flex text-[10px] mono mt-1" style="color:var(--neutral-40)">${arr.map(varn=>`<div style="flex:1">${v(varn).toUpperCase()}</div>`).join('')}</div></div>`).join('');
+
+  const pairs = [
+    ['White','#FFFFFF','Primary 60','--primary-60'],
+    ['White','#FFFFFF','Primary 50 (hover)','--primary-50'],
+    ['Link · Primary 50','#106EBE','White','--neutral-100'],
+    ['Teal text · Accent 40','#015A5D','White','--neutral-100'],
+    ['Dark ink','#201F1E','Caution 50 (badge)','--caution-50'],
+    ['Caution 80','#92400E','Caution 90 (banner)','--caution-90'],
+    ['White','#FFFFFF','Success 60','--success-60'],
+    ['White','#FFFFFF','Error 60','--error-60'],
+    ['Ink · Neutral 10','#201F1E','White','--neutral-100'],
+    ['Muted · Neutral 40','#605E5C','White','--neutral-100'],
+  ];
+  document.getElementById('pairings').innerHTML = pairs.map(([fn,fg,bn,bvar])=>{
+    const bg=v(bvar); const ratio=cr(fg,bg); const pass=ratio>=4.5;
+    return `<tr class="border-b border-[var(--neutral-85)]">
+      <td class="p-3">${fn} <span class="mono text-[11px]" style="color:var(--neutral-40)">${fg.toUpperCase()}</span></td>
+      <td class="p-3">${bn} <span class="mono text-[11px]" style="color:var(--neutral-40)">${bg.toUpperCase()}</span></td>
+      <td class="p-3"><strong>${ratio.toFixed(2)}:1</strong> <span style="color:${pass?'var(--success-60)':'var(--error-60)'}">${pass?'AA ✓':'fail'}</span></td>
+      <td class="p-3"><span style="background:${bg};color:${fg};padding:4px 10px;border-radius:4px;font-size:13px">Sample</span></td>
+    </tr>`;
+  }).join('');
+</script>
+</body>
+</html>

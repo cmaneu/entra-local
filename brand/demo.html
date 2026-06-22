@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sign in — Entra Local</title>
+<!-- Demo: the interactive sign-in / account-picker page (feature #6), mimicking the
+     login.microsoftonline.com card pattern, with the amber LOCAL EMULATOR badge.
+     Fake seed data. Standalone HTML + Tailwind (CDN). Tokens via CSS variables.
+     Segoe UI from system stack; Selawik + Cascadia Mono self-hosted OFL (see brand-book.html). -->
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @font-face { font-family:"Selawik"; src:url("./fonts/Selawik-Regular.woff2") format("woff2"); font-weight:400; font-display:swap; }
+  @font-face { font-family:"Cascadia Mono"; src:url("./fonts/CascadiaMono.woff2") format("woff2"); font-weight:400; font-display:swap; }
+  :root{
+    --primary-30:#004578;--primary-40:#005A9E;--primary-50:#106EBE;--primary-60:#0078D4;--primary-90:#DEECF9;
+    --accent-60:#038387;--caution-50:#F59E0B;--caution-80:#92400E;--caution-90:#FEF3C7;
+    --neutral-10:#201F1E;--neutral-20:#323130;--neutral-40:#605E5C;--neutral-60:#8A8886;
+    --neutral-80:#E1DFDD;--neutral-85:#EDEBE9;--neutral-95:#FAF9F8;--neutral-100:#FFFFFF;
+    --surface:#FFFFFF;--surface-alt:#FAF9F8;--on-surface:#201F1E;
+    --font-ui:"Segoe UI","Selawik",system-ui,-apple-system,sans-serif;
+    --font-mono:"Cascadia Mono","Cascadia Code",ui-monospace,Consolas,monospace;
+    --r-md:4px;--r-lg:8px;
+    --depth-8:0 1.6px 3.6px rgba(0,0,0,.13),0 0.3px 0.9px rgba(0,0,0,.11);
+  }
+  body{font-family:var(--font-ui);color:var(--on-surface);background:var(--surface-alt);
+       min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;}
+  .mono{font-family:var(--font-mono);}
+  .card{background:var(--surface);width:440px;max-width:100%;border-radius:var(--r-lg);box-shadow:var(--depth-8);padding:44px;}
+  .badge{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:var(--caution-50);color:var(--neutral-10);border-radius:var(--r-md);padding:3px 8px;display:inline-flex;gap:5px;align-items:center;}
+  .acct{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 8px;border:none;background:transparent;border-radius:var(--r-md);cursor:pointer;}
+  .acct:hover{background:var(--neutral-95);} .acct:active{background:var(--neutral-85);}
+  .acct:focus-visible{outline:2px solid var(--primary-60);outline-offset:1px;}
+  .avatar{width:32px;height:32px;border-radius:9999px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:600;flex:none;}
+  .name{font-size:14px;font-weight:600;color:var(--neutral-10);}
+  .upn{font-size:12px;color:var(--neutral-40);}
+  .divider{height:1px;background:var(--neutral-85);margin:6px 0;}
+</style>
+</head>
+<body>
+  <main class="card" role="dialog" aria-label="Sign in to Entra Local">
+    <div class="flex items-center justify-between mb-6">
+      <!-- App logo placeholder (the calling app's logo, NOT a Microsoft mark) -->
+      <div class="flex items-center gap-2">
+        <div style="width:28px;height:28px;border-radius:var(--r-md);background:var(--primary-60);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px">C</div>
+        <span class="font-semibold text-[15px]">Contoso&nbsp;SPA</span>
+      </div>
+      <span class="badge" title="This is a local emulator, not Microsoft Entra ID">▲ Local Emulator</span>
+    </div>
+
+    <h1 style="font-size:28px;font-weight:600;letter-spacing:-.01em" class="mb-1">Sign in</h1>
+    <p class="text-[14px] mb-5" style="color:var(--neutral-40)">to continue to <span class="mono text-[13px]">https://localhost:3000</span></p>
+
+    <div role="list" aria-label="Pick an account">
+      <button class="acct" role="listitem">
+        <span class="avatar" style="background:var(--primary-60)">AD</span>
+        <span><span class="name block">Alice Dev</span><span class="upn">alice@contoso.local</span></span>
+      </button>
+      <button class="acct" role="listitem">
+        <span class="avatar" style="background:var(--accent-60)">BT</span>
+        <span><span class="name block">Bob Tester</span><span class="upn">bob@contoso.local</span></span>
+      </button>
+      <button class="acct" role="listitem">
+        <span class="avatar" style="background:var(--neutral-60)">CQ</span>
+        <span><span class="name block">Carol QA</span><span class="upn">carol@contoso.local</span></span>
+      </button>
+      <div class="divider"></div>
+      <button class="acct" role="listitem">
+        <span class="avatar" style="background:var(--neutral-85);color:var(--neutral-40)">＋</span>
+        <span><span class="name block">Use another account</span></span>
+      </button>
+    </div>
+
+    <div class="mt-6 pt-4" style="border-top:1px solid var(--neutral-85)">
+      <p class="text-[12px]" style="color:var(--neutral-40)">
+        <strong style="color:var(--caution-80)">Not for production use.</strong>
+        Entra Local is a local emulator of Microsoft Entra ID for development and testing.
+        Accounts and tokens here are fake. It is not Microsoft and not affiliated with Microsoft.
+      </p>
+      <p class="text-[11px] mt-2 mono" style="color:var(--neutral-60)">tenant 11111111-1111-1111-1111-111111111111 · issuer https://localhost:8443/.../v2.0</p>
+    </div>
+  </main>
+</body>
+</html>

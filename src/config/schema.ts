@@ -1,0 +1,155 @@
+import { z } from 'zod';
+
+/** RFC 4122 GUID (any version), case-insensitive. */
+export const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const;
+const NODE_ENVS = ['development', 'test', 'production'] as const;
+
+/** Coerce an env-string / value into a boolean, leaving invalid input to fail validation. */
+function coerceBool(v: unknown): unknown {
+  if (typeof v === 'boolean') return v;
+  if (typeof v === 'string') {
+    const s = v.trim().toLowerCase();
+    if (s === 'true' || s === '1') return true;
+    if (s === 'false' || s === '0') return false;
+  }
+  return v;
+}
+
+/** Coerce an env-string into a number, leaving invalid input to fail validation. */
+function coerceNum(v: unknown): unknown {
+  if (typeof v === 'string') {
+    if (v.trim() === '') return NaN;
+    return Number(v);
+  }
+  return v;
+}
+
+const zBool = z.preprocess(coerceBool, z.boolean());
+const zInt = (min: number, max?: number) => {
+  let schema = z.number().int().min(min);
+  if (max !== undefined) schema = schema.max(max);
+  return z.preprocess(coerceNum, schema);
+};
+
+/**
+ * Schema for the merged raw config (defaults < config file < env). Values may arrive as
+ * strings (env) or native types (file/defaults); preprocessors normalize them. Any failure
+ * here aborts startup with the offending key(s) named (fail-fast).
+ */
+export const RawConfigSchema = z
+  .object({
+    host: z.string().min(1),
+    port: zInt(1, 65535),
+    tenantId: z.string().regex(GUID_RE, 'must be a GUID'),
+    issuer: z.string().url().optional(),
+    publicOrigin: z.string().url().optional(),
+    dbPath: z.string().min(1),
+    tlsEnabled: zBool,
+    tlsCertPath: z.string().min(1).optional(),
+    tlsKeyPath: z.string().min(1).optional(),
+    tlsCertDir: z.string().min(1),
+    requirePassword: zBool,
+    seedOnStart: zBool.optional(),
+    tokenLifetimeAuthCode: zInt(1),
+    tokenLifetimeId: zInt(1),
+    tokenLifetimeAccess: zInt(1),
+    tokenLifetimeRefresh: zInt(1),
+    tokenLifetimeDeviceCode: zInt(1),
+    deviceCodeInterval: zInt(1),
+    graphResourceId: z.string().min(1),
+    logLevel: z.enum(LOG_LEVELS),
+    configFile: z.string().min(1),
+    nodeEnv: z.enum(NODE_ENVS),
+  })
+  .superRefine((v, ctx) => {
+    const hasCert = v.tlsCertPath !== undefined;
+    const hasKey = v.tlsKeyPath !== undefined;
+    if (hasCert !== hasKey) {
+      const missing = hasCert ? 'tlsKeyPath' : 'tlsCertPath';
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [missing],
+        message: 'TLS_CERT and TLS_KEY must both be set or both unset',
+      });
+    }
+  });
+
+export type RawConfig = z.infer<typeof RawConfigSchema>;
+
+export type LogLevel = (typeof LOG_LEVELS)[number];
+export type NodeEnv = (typeof NODE_ENVS)[number];
+
+/** The validated, frozen configuration consumed by the whole app via `app.config`. */
+export interface Config {
+  readonly host: string;
+  readonly port: number;
+  readonly tenantId: string;
+  /** `https` or `http`, derived from `tls.enabled`. */
+  readonly scheme: 'https' | 'http';
+  /** Token `iss` / discovery `issuer`. Derived unless overridden. */
+  readonly issuer: string;
+  /** Base origin for endpoint URLs. Derived unless overridden. */
+  readonly publicOrigin: string;
+  readonly dbPath: string;
+  readonly tls: {
+    readonly enabled: boolean;
+    readonly certPath?: string;
+    readonly keyPath?: string;
+    readonly certDir: string;
+  };
+  readonly requirePassword: boolean;
+  readonly seedOnStart?: boolean;
+  readonly tokenLifetimes: {
+    readonly authCode: number;
+    readonly idToken: number;
+    readonly accessToken: number;
+    readonly refreshToken: number;
+    readonly deviceCode: number;
+  };
+  readonly deviceCodeInterval: number;
+  readonly graphResourceId: string;
+  readonly logLevel: LogLevel;
+  readonly configFile: string;
+  readonly nodeEnv: NodeEnv;
+}
+
+/** Assemble + freeze the public Config from a validated raw config, deriving issuer/origin. */
+export function assembleConfig(raw: RawConfig): Config {
+  const scheme: 'https' | 'http' = raw.tlsEnabled ? 'https' : 'http';
+  const publicOrigin = raw.publicOrigin ?? `${scheme}://${raw.host}:${raw.port}`;
+  const issuer = raw.issuer ?? `${publicOrigin}/${raw.tenantId}/v2.0`;
+
+  const config: Config = {
+    host: raw.host,
+    port: raw.port,
+    tenantId: raw.tenantId,
+    scheme,
+    issuer,
+    publicOrigin,
+    dbPath: raw.dbPath,
+    tls: Object.freeze({
+      enabled: raw.tlsEnabled,
+      ...(raw.tlsCertPath !== undefined ? { certPath: raw.tlsCertPath } : {}),
+      ...(raw.tlsKeyPath !== undefined ? { keyPath: raw.tlsKeyPath } : {}),
+      certDir: raw.tlsCertDir,
+    }),
+    requirePassword: raw.requirePassword,
+    ...(raw.seedOnStart !== undefined ? { seedOnStart: raw.seedOnStart } : {}),
+    tokenLifetimes: Object.freeze({
+      authCode: raw.tokenLifetimeAuthCode,
+      idToken: raw.tokenLifetimeId,
+      accessToken: raw.tokenLifetimeAccess,
+      refreshToken: raw.tokenLifetimeRefresh,
+      deviceCode: raw.tokenLifetimeDeviceCode,
+    }),
+    deviceCodeInterval: raw.deviceCodeInterval,
+    graphResourceId: raw.graphResourceId,
+    logLevel: raw.logLevel,
+    configFile: raw.configFile,
+    nodeEnv: raw.nodeEnv,
+  };
+
+  return Object.freeze(config);
+}

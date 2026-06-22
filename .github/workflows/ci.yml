@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      TENANT_ID: '11111111-1111-1111-1111-111111111111'
+    strategy:
+      matrix:
+        # Node 24 is the primary target; 22.5 asserts the node:sqlite floor (#2).
+        node-version: ['24', '22.5']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit + integration tests
+        run: npm test
+
+      # Playwright browser is required by the e2e browser drivers once #6 lands;
+      # cached here so the e2e job stays fast. Browser launch is gated behind
+      # E2E_BROWSER until then, so the #1 e2e suite passes without it.
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end (real-MSAL) tests
+        run: npm run test:e2e

@@ -1,0 +1,14 @@
+dist/
+node_modules/
+coverage/
+data/
+portal/dist/*
+!portal/dist/index.html
+package-lock.json
+specs/
+memory/
+brand/
+*.md
+.github/
+samples/
+docs/

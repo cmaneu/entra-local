@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Runtime data (SQLite DB + persisted TLS cert)
+data/
+
+# Portal build output (placeholder index.html is committed; everything else is built in #12)
+portal/dist/*
+!portal/dist/index.html
+
+# Local config / secrets (never commit real secrets)
+entra-local.config.json
+.env
+.env.local
+
+# Test artifacts
+coverage/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
