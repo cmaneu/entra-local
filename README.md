@@ -139,6 +139,24 @@ Token and Client Credentials), UserInfo/Logout, minimal Graph, the admin portal,
 single-executable packaging. Multi-tenant, OBO, broader Graph, and cert-based client auth
 are deferred.
 
+## Security & seed data
+
+Entra Local is a **development tool**, not a secure identity provider. It ships a deterministic,
+fixed-GUID seed directory so flows are reproducible in CI:
+
+- Default tenant `11111111-1111-1111-1111-111111111111` (`Entra Local`).
+- Users `alice@entralocal.dev` and `bob@entralocal.dev` (both members of the `Engineering` group),
+  with the known dev password `Password1!`.
+- A public SPA app (`cccccccc-…-0001`, redirect `https://localhost:3000`, scope `access_as_user`)
+  and a confidential daemon app (`cccccccc-…-0002`, app role `Tasks.Read.All`) whose client secret
+  is the known dev value `daemon-app-secret`.
+
+These credentials are **intentionally public and dev-only**. Passwords and app secrets are stored
+hashed (scrypt) at rest, and refresh tokens are stored hashed (SHA-256) — but signing keys are
+persisted unencrypted for a stable `kid`. Never point a real application or real secrets at this
+emulator, and never expose it beyond localhost. Reset to a clean seed at any time via the store
+reset routine (admin endpoint lands in a later feature).
+
 ## Disclaimer
 
 Entra Local is an independent developer tool and is **not** affiliated with, endorsed by, or

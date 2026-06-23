@@ -8,29 +8,14 @@ afterEach(async () => {
   await ctx?.close();
 });
 
-/** Every reserved canonical path, with the tenant GUID substituted. */
+/** Every reserved canonical path that is still a `501` stub (only `/devicecode` (#15) remains). */
 function reservedPaths(): { method: 'GET' | 'POST'; url: string }[] {
   const t = TEST_TENANT_ID;
-  return [
-    { method: 'GET', url: `/${t}/v2.0/.well-known/openid-configuration` },
-    { method: 'GET', url: `/${t}/discovery/v2.0/keys` },
-    { method: 'GET', url: `/${t}/oauth2/v2.0/authorize` },
-    { method: 'POST', url: `/${t}/oauth2/v2.0/token` },
-    { method: 'GET', url: `/${t}/oauth2/v2.0/logout` },
-    { method: 'POST', url: `/${t}/oauth2/v2.0/devicecode` },
-    { method: 'GET', url: '/graph/v1.0/me' },
-    { method: 'GET', url: '/graph/v1.0/users' },
-    { method: 'GET', url: '/graph/v1.0/users/abc' },
-    { method: 'GET', url: '/graph/v1.0/groups' },
-    { method: 'GET', url: '/graph/v1.0/groups/abc' },
-    { method: 'GET', url: '/graph/v1.0/groups/abc/members' },
-    { method: 'GET', url: '/graph/oidc/userinfo' },
-    { method: 'POST', url: '/graph/oidc/userinfo' },
-  ];
+  return [{ method: 'POST', url: `/${t}/oauth2/v2.0/devicecode` }];
 }
 
 describe('Path map: reserved-stub rule (criterion 8)', () => {
-  it('every reserved OIDC/OAuth/Graph/UserInfo path returns 501 (not 404/SPA)', async () => {
+  it('every remaining reserved OIDC/OAuth path returns 501 (not 404/SPA)', async () => {
     ctx = await buildTestApp();
     for (const { method, url } of reservedPaths()) {
       const res = await ctx.inject({ method, url });
@@ -41,14 +26,34 @@ describe('Path map: reserved-stub rule (criterion 8)', () => {
     }
   });
 
-  it('discovery routing reaches the plugin mount for the GUID and aliases', async () => {
+  it('discovery routing reaches the real handler for the GUID and aliases', async () => {
     ctx = await buildTestApp();
     for (const tenant of [TEST_TENANT_ID, 'common', 'organizations', 'consumers']) {
       const res = await ctx.inject({
         method: 'GET',
         url: `/${tenant}/v2.0/.well-known/openid-configuration`,
       });
-      expect(res.statusCode, tenant).toBe(501);
+      // #4 replaced the reserved 501 stub with the real discovery handler.
+      expect(res.statusCode, tenant).toBe(200);
+    }
+  });
+
+  it('graph /v1.0/* paths reach the real #10 handlers (401 without bearer, not 501)', async () => {
+    ctx = await buildTestApp();
+    const graphPaths = [
+      '/graph/v1.0/me',
+      '/graph/v1.0/users',
+      '/graph/v1.0/users/abc',
+      '/graph/v1.0/groups',
+      '/graph/v1.0/groups/abc',
+      '/graph/v1.0/groups/abc/members',
+    ];
+    for (const url of graphPaths) {
+      const res = await ctx.inject({ method: 'GET', url });
+      expect(res.statusCode, url).toBe(401);
+      expect(res.headers['content-type'], url).toContain('application/json');
+      const body = res.json() as { error: { code: string } };
+      expect(body.error.code, url).toBe('InvalidAuthenticationToken');
     }
   });
 });

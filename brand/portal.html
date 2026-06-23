@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Web Portal — Entra Local (design mockup)</title>
+<!--
+  Feature #12 — Web Portal visual treatment (designer: Murdock).
+  A self-contained, high-fidelity static mockup of every portal screen + state,
+  in the established Fluent-mimic identity. NO build step, NO external assets
+  beyond the system font stack. Tokens are taken verbatim from DESIGN.md and
+  match brand/demo.html, brand/ui-kit.html and src/identity/signinPage.ts so the
+  portal reads as one product with the already-shipped sign-in page.
+
+  This file is a CODER REFERENCE, not shippable code. Baracus builds the real
+  React+Vite SPA under portal/. Each ".frame" below is one route/state — see the
+  caption. Fake seed data throughout; identifiers are illustrative.
+
+  Self-hosted OFL web fonts (Selawik, Cascadia Mono) are referenced exactly as in
+  the brand kit; if absent the system stack (Segoe UI / Consolas) renders the
+  same look. No webfont is required for the mockup to read correctly.
+-->
+<style>
+  @font-face { font-family:"Selawik"; src:url("./fonts/Selawik-Regular.woff2") format("woff2"); font-weight:400; font-display:swap; }
+  @font-face { font-family:"Cascadia Mono"; src:url("./fonts/CascadiaMono.woff2") format("woff2"); font-weight:400; font-display:swap; }
+  :root{
+    --primary-30:#004578;--primary-40:#005A9E;--primary-50:#106EBE;--primary-60:#0078D4;--primary-70:#2B88D8;--primary-90:#DEECF9;
+    --accent-40:#015A5D;--accent-60:#038387;
+    --caution-50:#F59E0B;--caution-70:#B45309;--caution-80:#92400E;--caution-90:#FEF3C7;
+    --success-60:#107C10;--success-90:#DFF6DD;
+    --error-60:#D13438;--error-80:#A4262C;--error-90:#FDE7E9;
+    --neutral-10:#201F1E;--neutral-20:#323130;--neutral-40:#605E5C;--neutral-60:#8A8886;--neutral-70:#C8C6C4;
+    --neutral-80:#E1DFDD;--neutral-85:#EDEBE9;--neutral-95:#FAF9F8;--neutral-100:#FFFFFF;
+    --surface:#FFFFFF;--surface-alt:#FAF9F8;--on-surface:#201F1E;
+    --font-ui:"Segoe UI","Selawik",system-ui,-apple-system,sans-serif;
+    --font-mono:"Cascadia Mono","Cascadia Code",ui-monospace,Consolas,monospace;
+    --r-sm:2px;--r-md:4px;--r-lg:8px;
+    --depth-2:0 0.6px 1.8px rgba(0,0,0,.10),0 0.15px 0.45px rgba(0,0,0,.07);
+    --depth-4:0 0.9px 2.7px rgba(0,0,0,.11),0 0.5px 1.6px rgba(0,0,0,.09);
+    --depth-8:0 1.6px 3.6px rgba(0,0,0,.13),0 0.3px 0.9px rgba(0,0,0,.11);
+    --depth-16:0 3.2px 7.2px rgba(0,0,0,.13),0 0.6px 1.8px rgba(0,0,0,.11);
+    --depth-64:0 12.8px 28.8px rgba(0,0,0,.22),0 2.4px 7.2px rgba(0,0,0,.18);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;}
+  body{font-family:var(--font-ui);color:var(--on-surface);background:#EAE8E6;font-size:14px;line-height:1.5;padding:24px;}
+  .mono{font-family:var(--font-mono);}
+
+  /* ---- mockup scaffolding (NOT part of the product) ---- */
+  .doc-h{max-width:1180px;margin:0 auto 8px;}
+  .doc-h h1{font-size:24px;font-weight:600;margin:0 0 4px;letter-spacing:-.005em;}
+  .doc-h p{color:var(--neutral-40);margin:0 0 4px;font-size:13px;}
+  .frame{max-width:1180px;margin:0 auto 28px;border:1px solid var(--neutral-70);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--depth-4);position:relative;background:var(--surface-alt);}
+  .cap{background:var(--neutral-10);color:#fff;font-size:12px;font-weight:600;padding:6px 12px;display:flex;gap:10px;align-items:center;}
+  .cap .route{font-family:var(--font-mono);color:var(--primary-70);}
+  .cap .state{color:var(--caution-50);}
+
+  /* ---- app shell ---- */
+  .topbar{height:48px;background:var(--surface);border-bottom:1px solid var(--neutral-85);display:flex;align-items:center;gap:12px;padding:0 16px;}
+  .wordmark{font-weight:600;font-size:16px;letter-spacing:-.01em;white-space:nowrap;}
+  .badge{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;background:var(--caution-50);color:var(--neutral-10);border-radius:var(--r-md);padding:3px 8px;display:inline-flex;gap:5px;align-items:center;white-space:nowrap;}
+  .chip{font-family:var(--font-mono);font-size:12px;background:var(--neutral-95);border:1px solid var(--neutral-85);color:var(--neutral-20);border-radius:var(--r-md);padding:2px 8px;display:inline-flex;align-items:center;gap:6px;max-width:100%;}
+  .chip .copy{color:var(--primary-50);cursor:pointer;}
+  .chip.copied{background:var(--neutral-85);}
+  .chip.copied .copy{color:var(--success-60);}
+  .health{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:13px;color:var(--neutral-20);white-space:nowrap;}
+  .dot{width:8px;height:8px;border-radius:9999px;display:inline-block;flex:none;}
+  .dot.ok{background:var(--accent-60);} .dot.bad{background:var(--error-60);} .dot.warn{background:var(--caution-50);}
+
+  .body-row{display:flex;min-height:560px;}
+  .sidenav{width:240px;flex:none;background:var(--surface-alt);border-right:1px solid var(--neutral-85);padding:8px;}
+  .navitem{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--r-md);color:var(--neutral-20);font-size:14px;font-weight:600;text-decoration:none;cursor:pointer;border-left:2px solid transparent;margin-bottom:2px;}
+  .navitem:hover{background:var(--neutral-95);}
+  .navitem.active{background:var(--primary-90);color:var(--primary-30);border-left:2px solid var(--primary-60);}
+  .navitem .ic{width:16px;text-align:center;color:var(--neutral-40);}
+  .navitem.active .ic{color:var(--primary-30);}
+  .main{flex:1;background:var(--surface-alt);padding:24px;min-width:0;}
+
+  /* ---- typography helpers ---- */
+  .display{font-size:28px;font-weight:600;letter-spacing:-.01em;margin:0;}
+  .h-lg{font-size:24px;font-weight:600;letter-spacing:-.005em;margin:0;}
+  .h-md{font-size:20px;font-weight:600;margin:0;}
+  .h-sm{font-size:16px;font-weight:600;margin:0;}
+  .sub{color:var(--neutral-40);font-size:14px;margin:4px 0 0;}
+  .muted{color:var(--neutral-40);}
+  .b-sm{font-size:12px;}
+  .lbl-caps{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--neutral-40);}
+
+  /* ---- page header (command bar) ---- */
+  .pagehead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap;}
+  .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+
+  /* ---- buttons ---- */
+  .btn{font-size:14px;font-weight:600;height:32px;padding:0 20px;border-radius:var(--r-md);border:1px solid transparent;cursor:pointer;display:inline-flex;align-items:center;gap:8px;font-family:inherit;white-space:nowrap;}
+  .btn:focus-visible{outline:2px solid var(--primary-60);outline-offset:1px;}
+  .btn-primary{background:var(--primary-60);color:#fff;}
+  .btn-primary:hover{background:var(--primary-50);} .btn-primary:active{background:var(--primary-40);}
+  .btn-primary:disabled{background:var(--neutral-85);color:var(--neutral-60);cursor:not-allowed;}
+  .btn-secondary{background:var(--surface);color:var(--neutral-20);border-color:var(--neutral-80);}
+  .btn-secondary:hover{background:var(--neutral-95);border-color:var(--neutral-70);color:var(--neutral-10);}
+  .btn-secondary:active{background:var(--neutral-85);}
+  .btn-secondary:disabled{background:var(--neutral-95);color:var(--neutral-60);border-color:var(--neutral-85);cursor:not-allowed;}
+  .btn-destructive{background:var(--surface);color:var(--error-60);border-color:var(--error-60);}
+  .btn-destructive:hover{background:var(--error-90);}
+  .btn-destructive.solid{background:var(--error-60);color:#fff;border-color:var(--error-60);}
+  .btn-sm{height:26px;padding:0 12px;font-size:13px;}
+  .iconbtn{height:28px;width:28px;padding:0;justify-content:center;background:transparent;border-color:transparent;color:var(--neutral-40);font-size:16px;}
+  .iconbtn:hover{background:var(--neutral-95);color:var(--neutral-10);}
+  .link{color:var(--primary-50);text-decoration:none;cursor:pointer;font-weight:600;}
+  .link:hover{text-decoration:underline;}
+  .spin{display:inline-block;animation:sp 1s linear infinite;}
+  @keyframes sp{to{transform:rotate(360deg);}}
+  @media (prefers-reduced-motion: reduce){.spin{animation:none;}}
+
+  /* ---- cards ---- */
+  .card{background:var(--surface);border:1px solid var(--neutral-80);border-radius:var(--r-md);box-shadow:var(--depth-2);padding:24px;}
+  .card.flush{padding:0;overflow:hidden;}
+  .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 24px;border-bottom:1px solid var(--neutral-85);}
+  .grid{display:grid;gap:16px;}
+  .stack > * + *{margin-top:16px;}
+
+  /* ---- dashboard stat tiles ---- */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .stat{background:var(--surface);border:1px solid var(--neutral-80);border-radius:var(--r-md);box-shadow:var(--depth-2);padding:16px 20px;}
+  .stat .n{font-size:28px;font-weight:600;line-height:1.1;letter-spacing:-.01em;}
+  .stat .k{font-size:12px;font-weight:600;color:var(--neutral-40);text-transform:uppercase;letter-spacing:.04em;margin-top:2px;}
+  .kv{display:grid;grid-template-columns:140px 1fr;gap:8px 16px;align-items:center;}
+  .kv .k{color:var(--neutral-40);font-size:13px;}
+  .endpoint{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--neutral-85);}
+  .endpoint:last-child{border-bottom:none;}
+  .endpoint .ep-k{font-size:13px;font-weight:600;color:var(--neutral-20);width:110px;flex:none;}
+  .endpoint .ep-v{font-family:var(--font-mono);font-size:12px;color:var(--neutral-20);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+
+  /* ---- tables ---- */
+  table.dt{width:100%;border-collapse:collapse;font-size:14px;background:var(--surface);}
+  table.dt th{font-size:12px;font-weight:600;color:var(--neutral-40);text-align:left;padding:10px 16px;border-bottom:1px solid var(--neutral-85);white-space:nowrap;}
+  table.dt td{padding:10px 16px;border-bottom:1px solid var(--neutral-85);color:var(--neutral-10);vertical-align:middle;}
+  table.dt tbody tr:hover{background:var(--neutral-95);}
+  table.dt tbody tr.sel td{background:var(--primary-90);color:var(--primary-30);}
+  table.dt tr:last-child td{border-bottom:none;}
+  .yes{color:var(--success-60);font-weight:600;} .no{color:var(--neutral-40);}
+  .skel{display:block;height:12px;border-radius:var(--r-sm);background:linear-gradient(90deg,var(--neutral-85),var(--neutral-95),var(--neutral-85));background-size:200% 100%;animation:shimmer 1.2s linear infinite;}
+  @keyframes shimmer{to{background-position:-200% 0;}}
+  @media (prefers-reduced-motion: reduce){.skel{animation:none;}}
+
+  /* ---- pagination ---- */
+  .pager{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--neutral-85);font-size:13px;color:var(--neutral-40);}
+  .pager .grp{display:flex;gap:8px;align-items:center;}
+
+  /* ---- search ---- */
+  .search{position:relative;}
+  .search input{padding-left:30px;}
+  .search .ic{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--neutral-60);font-size:14px;}
+
+  /* ---- forms ---- */
+  label{display:block;font-size:14px;font-weight:600;color:var(--neutral-20);margin:0 0 6px;}
+  .input{height:32px;width:100%;border:1px solid var(--neutral-80);border-radius:var(--r-md);padding:6px 8px;font-size:14px;font-family:var(--font-ui);background:var(--surface);color:var(--neutral-10);}
+  .input.mono{font-family:var(--font-mono);font-size:13px;}
+  .input:focus{outline:2px solid var(--primary-60);outline-offset:1px;border-color:var(--primary-60);}
+  .input.error{border-color:var(--error-60);}
+  .input:disabled{background:var(--neutral-95);color:var(--neutral-60);}
+  textarea.input{height:auto;min-height:64px;}
+  .field-error{color:var(--error-80);font-size:12px;margin-top:4px;}
+  .help{color:var(--neutral-40);font-size:12px;margin-top:4px;}
+  .field{margin-bottom:16px;}
+
+  /* toggle switch (isConfidential / isEnabled) */
+  .switch{display:inline-flex;align-items:center;gap:10px;cursor:pointer;}
+  .track{width:40px;height:20px;border-radius:9999px;background:var(--neutral-60);position:relative;transition:background .15s;flex:none;}
+  .track .knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:9999px;background:#fff;transition:left .15s;}
+  .switch.on .track{background:var(--primary-60);}
+  .switch.on .track .knob{left:22px;}
+  .switch:focus-visible .track{outline:2px solid var(--primary-60);outline-offset:2px;}
+
+  /* ---- banners ---- */
+  .banner{border-radius:var(--r-md);padding:12px 16px;font-size:14px;display:flex;gap:10px;align-items:flex-start;}
+  .banner .ic{flex:none;}
+  .banner-caution{background:var(--caution-90);color:var(--caution-80);border-left:3px solid var(--caution-50);}
+  .banner-error{background:var(--error-90);color:var(--error-80);border-left:3px solid var(--error-60);}
+  .banner-success{background:var(--success-90);color:var(--success-60);border-left:3px solid var(--success-60);}
+
+  /* ---- tabs ---- */
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--neutral-85);margin-bottom:16px;}
+  .tab{padding:8px 12px;font-size:14px;font-weight:600;color:var(--neutral-40);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit;}
+  .tab:hover{color:var(--neutral-10);}
+  .tab.active{color:var(--primary-30);border-bottom-color:var(--primary-60);}
+  .tab:focus-visible{outline:2px solid var(--primary-60);outline-offset:1px;}
+
+  /* ---- code block / snippet ---- */
+  .code{position:relative;background:var(--neutral-10);color:#E8E6E3;border-radius:var(--r-md);padding:16px 18px;font-family:var(--font-mono);font-size:13px;line-height:1.6;overflow:auto;white-space:pre;}
+  .code .cp{position:absolute;top:8px;right:8px;background:rgba(255,255,255,.10);color:#fff;border:none;border-radius:var(--r-md);font-size:12px;font-weight:600;font-family:var(--font-ui);padding:4px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center;}
+  .code .cp:hover{background:rgba(255,255,255,.18);}
+  .code .c-key{color:#9CDCFE;} .code .c-str{color:#CE9178;} .code .c-com{color:#6A9955;} .code .c-fn{color:#DCDCAA;}
+
+  /* ---- empty / loading states ---- */
+  .empty{text-align:center;padding:48px 24px;}
+  .empty .ic{font-size:28px;color:var(--neutral-60);}
+  .empty .t{font-size:16px;font-weight:600;margin:8px 0 2px;}
+  .empty .d{font-size:12px;color:var(--neutral-40);margin-bottom:16px;}
+  .spinblock{display:flex;align-items:center;justify-content:center;gap:10px;padding:48px;color:var(--neutral-40);font-size:14px;}
+
+  /* ---- toast ---- */
+  .toaststack{position:absolute;right:20px;bottom:20px;display:flex;flex-direction:column;gap:10px;align-items:flex-end;z-index:5;}
+  .toast{background:var(--neutral-10);color:#fff;border-radius:var(--r-md);padding:12px 16px;box-shadow:var(--depth-16);font-size:14px;display:inline-flex;gap:10px;align-items:center;}
+  .toast .ok{color:var(--success-60);} .toast .bad{color:#F8A0A3;}
+
+  /* ---- overlays: scrim + dialog + drawer ---- */
+  .scrim{position:absolute;inset:0;background:rgba(32,31,30,.40);display:flex;align-items:center;justify-content:center;z-index:10;}
+  .dialog{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--depth-64);width:440px;max-width:calc(100% - 32px);padding:24px;}
+  .dialog h2{font-size:20px;font-weight:600;margin:0 0 8px;}
+  .dialog p{margin:0 0 16px;color:var(--neutral-20);font-size:14px;}
+  .dialog .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px;}
+  .drawer-scrim{position:absolute;inset:0;background:rgba(32,31,30,.40);z-index:10;}
+  .drawer{position:absolute;top:0;right:0;height:100%;width:440px;max-width:100%;background:var(--surface);box-shadow:var(--depth-64);z-index:11;display:flex;flex-direction:column;}
+  .drawer-head{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--neutral-85);}
+  .drawer-body{padding:24px;overflow:auto;flex:1;}
+  .drawer-foot{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--neutral-85);}
+
+  /* sr-only + aria-live note marker */
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;}
+  .note{max-width:1180px;margin:0 auto 28px;background:#FFF9E6;border:1px solid var(--caution-50);border-left:4px solid var(--caution-50);border-radius:var(--r-md);padding:12px 16px;color:var(--caution-80);font-size:13px;}
+  .note code{font-family:var(--font-mono);background:rgba(0,0,0,.05);padding:1px 4px;border-radius:3px;}
+
+  /* member picker rows */
+  .picker-row{display:flex;align-items:center;gap:10px;padding:8px;border-radius:var(--r-md);cursor:pointer;}
+  .picker-row:hover{background:var(--neutral-95);}
+  .avatar{width:28px;height:28px;border-radius:9999px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:600;flex:none;}
+  .member{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--neutral-85);}
+</style>
+</head>
+<body>
+
+<div class="doc-h">
+  <h1>Entra Local — Web Portal · visual treatment (feature&nbsp;#12)</h1>
+  <p>High-fidelity mockup of every screen and state in the Fluent-mimic identity. Each framed viewport below maps to one route/state. Reference only — not shippable code. Tokens per <span class="mono">DESIGN.md</span>.</p>
+  <p>Routes: <span class="mono">/</span> Dashboard · <span class="mono">/users</span> · <span class="mono">/groups</span> · <span class="mono">/apps</span> · <span class="mono">/apps/:id</span></p>
+</div>
+
+
+<!-- ============================================================= 1. DASHBOARD (loaded) ============================================================= -->
+<div class="frame">
+  <div class="cap"><span class="route">/</span><span>Dashboard</span><span class="state">· loaded</span></div>
+  <div class="topbar">
+    <span class="wordmark">Entra&nbsp;Local</span>
+    <span class="badge" title="This is a local emulator, not Microsoft Entra ID">▲ Local Emulator</span>
+    <span class="chip" title="Emulator origin">localhost:8443 <span class="copy">⧉</span></span>
+    <span class="chip" title="Tenant ID">tenant 11111111…1111 <span class="copy">⧉</span></span>
+    <span class="health"><span class="dot ok"></span> Connected · TLS ok · v0.1.0</span>
+  </div>
+  <div class="body-row">
+    <nav class="sidenav" aria-label="Primary">
+      <a class="navitem active" aria-current="page"><span class="ic">◧</span>Dashboard</a>
+      <a class="navitem"><span class="ic">◔</span>Users</a>
+      <a class="navitem"><span class="ic">◑</span>Groups</a>
+      <a class="navitem"><span class="ic">▤</span>App registrations</a>
+    </nav>
+    <main class="main">
+      <div class="pagehead">
+        <div><h1 class="display">Dashboard</h1><p class="sub">Local Entra ID emulator — directory and endpoint overview.</p></div>
+        <div class="toolbar">
+          <button class="btn btn-secondary">⟳ Seed</button>
+          <button class="btn btn-secondary btn-destructive" style="border-color:var(--error-60)">Reset…</button>
+        </div>
+      </div>
+
+      <div class="banner banner-caution" style="margin-bottom:16px;">
+        <span class="ic">⚠</span><span><strong>Not for production use.</strong> Entra Local is a local emulator of Microsoft Entra ID. Tokens, accounts and secrets here are fake; the server is intentionally insecure.</span>
+      </div>
+
+      <div class="stats" style="margin-bottom:16px;">
+        <div class="stat"><div class="n">4</div><div class="k">Users</div></div>
+        <div class="stat"><div class="n">2</div><div class="k">Groups</div></div>
+        <div class="stat"><div class="n">3</div><div class="k">App registrations</div></div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:1fr 1fr;">
+        <div class="card">
+          <h2 class="h-md" style="margin-bottom:12px;">Emulator status</h2>
+          <div class="kv">
+            <div class="k">Status</div><div><span class="dot ok"></span> <span class="yes">Healthy</span></div>
+            <div class="k">Version</div><div class="mono b-sm">0.1.0</div>
+            <div class="k">Tenant ID</div><div><span class="chip">11111111-1111-1111-1111-111111111111 <span class="copy">⧉</span></span></div>
+            <div class="k">TLS</div><div><span class="dot ok"></span> Enabled (self-signed)</div>
+          </div>
+        </div>
+        <div class="card">
+          <h2 class="h-md" style="margin-bottom:12px;">Endpoints</h2>
+          <div class="endpoint"><span class="ep-k">Issuer</span><span class="ep-v">https://localhost:8443/1111…1111/v2.0</span><button class="iconbtn" aria-label="Copy issuer">⧉</button></div>
+          <div class="endpoint"><span class="ep-k">Discovery</span><span class="ep-v">…/v2.0/.well-known/openid-configuration</span><button class="iconbtn" aria-label="Copy discovery URL">⧉</button></div>
+          <div class="endpoint"><span class="ep-k">JWKS</span><span class="ep-v">…/discovery/v2.0/keys</span><button class="iconbtn" aria-label="Copy JWKS URL">⧉</button></div>
+          <div class="endpoint"><span class="ep-k">Authorize</span><span class="ep-v">…/oauth2/v2.0/authorize</span><button class="iconbtn" aria-label="Copy authorize URL">⧉</button></div>
+          <div class="endpoint"><span class="ep-k">Token</span><span class="ep-v">…/oauth2/v2.0/token</span><button class="iconbtn" aria-label="Copy token URL">⧉</button></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+
+<!-- ============================================================= 2. DASHBOARD — reset confirm dialog ============================================================= -->
+<div class="frame">
+  <div class="cap"><span class="route">/</span><span>Dashboard</span><span class="state">· reset confirm dialog (modal, focus-trapped)</span></div>
+  <div class="topbar">
+    <span class="wordmark">Entra&nbsp;Local</span>
+    <span class="badge">▲ Local Emulator</span>
+    <span class="chip">localhost:8443 <span class="copy">⧉</span></span>
+    <span class="health"><span class="dot ok"></span> Connected · TLS ok</span>
+  </div>
+  <div class="body-row">
+    <nav class="sidenav" aria-label="Primary">
+      <a class="navitem active"><span class="ic">◧</span>Dashboard</a>
+      <a class="navitem"><span class="ic">◔</span>Users</a>
+      <a class="navitem"><span class="ic">◑</span>Groups</a>
+      <a class="navitem"><span class="ic">▤</span>App registrations</a>
+    </nav>
+    <main class="main" aria-hidden="true">
+      <div class="pagehead"><div><h1 class="display">Dashboard</h1></div></div>
+      <div class="stats"><div class="stat"><div class="n">4</div><div class="k">Users</div></div><div class="stat"><div class="n">2</div><div class="k">Groups</div></div><div class="stat"><div class="n">3</div><div class="k">App registrations</div></div></div>
+    </main>
+  </div>
+  <div class="scrim">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="rst-t" aria-describedby="rst-d">
+      <h2 id="rst-t">Reset emulator data?</h2>
+      <p id="rst-d">This empties all users, groups, app registrations, secrets, codes and sessions, then re-applies the deterministic seed. The tenant and signing keys are preserved. <strong>This cannot be undone.</strong></p>
+      <div class="banner banner-caution" style="margin-bottom:16px;"><span class="ic">⚠</span><span>3 apps and 4 users will be replaced by seed data.</span></div>
+      <div class="actions">
+        <button class="btn btn-secondary">Cancel</button>
+        <button class="btn btn-destructive solid" autofocus>Reset data</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================= 3. USERS — table loaded ============================================================= -->
+<div class="frame">
+  <div class="cap"><span class="route">/users</span><span>Users</span><span class="state">· loaded · search + paging</span></div>
+  <div class="topbar">
+    <span class="wordmark">Entra&nbsp;Local</span><span class="badge">▲ Local Emulator</span>
+    <span class="chip">localhost:8443 <span class="copy">⧉</span></span>
+    <span class="health"><span class="dot ok"></span> Connected · TLS ok</span>
+  </div>
+  <div class="body-row">
+    <nav class="sidenav" aria-label="Primary">
+      <a class="navitem"><span class="ic">◧</span>Dashboard</a>
+      <a class="navitem active" aria-current="page"><span class="ic">◔</span>Users</a>
+      <a class="navitem"><span class="ic">◑</span>Groups</a>
+      <a class="navitem"><span class="ic">▤</span>App registrations</a>
+    </nav>
+    <main class="main">
+      <div class="pagehead">
+        <div><h1 class="display">Users</h1><p class="sub">Directory accounts that can sign in to the emulator.</p></div>
+        <div class="toolbar">
+          <div class="search"><span class="ic">⌕</span><input class="input" style="width:220px" placeholder="Search UPN or name" aria-label="Search users"></div>
+          <button class="btn btn-primary">＋ New user</button>
+        </div>
+      </div>
+      <div class="card flush">
+        <table class="dt">
+          <thead><tr><th>User principal name</th><th>Display name</th><th>Mail</th><th>Enabled</th><th>Password</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="mono b-sm">alice@contoso.local</td><td>Alice Dev</td><td class="muted">alice@contoso.local</td><td><span class="yes">● Yes</span></td><td><span class="yes">Set</span></td><td style="text-align:right"><button class="iconbtn" aria-label="User actions">…</button></td></tr>
+            <tr><td class="mono b-sm">bob@contoso.local</td><td>Bob Tester</td><td class="muted">bob@contoso.local</td><td><span class="yes">● Yes</span></td><td class="muted">None</td><td style="text-align:right"><button class="iconbtn" aria-label="User actions">…</button></td></tr>
+            <tr><td class="mono b-sm">carol@contoso.local</td><td>Carol QA</td><td class="muted">—</td><td><span class="no">○ No</span></td><td class="muted">None</td><td style="text-align:right"><button class="iconbtn" aria-label="User actions">…</button></td></tr>
+            <tr><td class="mono b-sm">dan@contoso.local</td><td>Dan Ops</td><td class="muted">dan@contoso.local</td><td><span class="yes">● Yes</span></td><td><span class="yes">Set</span></td><td style="text-align:right"><button class="iconbtn" aria-label="User actions">…</button></td></tr>
+          </tbody>
+        </table>
+        <div class="pager">
+          <span>1–4 of 4</span>
+          <div class="grp">
+            <span>Rows: <strong>50</strong></span>
+            <button class="btn btn-secondary btn-sm" disabled>‹ Prev</button>
+            <button class="btn btn-secondary btn-sm" disabled>Next ›</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+
+<!-- ============================================================= 4. USERS — loading / empty / error (3-up) ============================================================= -->
+<div class="frame">
+  <div class="cap"><span class="route">/users</span><span>Users</span><span class="state">· loading skeleton</span></div>
+  <div class="topbar"><span class="wordmark">Entra&nbsp;Local</span><span class="badge">▲ Local Emulator</span><span class="chip">localhost:8443 <span class="copy">⧉</span></span><span class="health"><span class="dot ok"></span> Connected · TLS ok</span></div>
+  <div class="body-row">
+    <nav class="sidenav" aria-label="Primary"><a class="navitem"><span class="ic">◧</span>Dashboard</a><a class="navitem active"><span class="ic">◔</span>Users</a><a class="navitem"><span class="ic">◑</span>Groups</a><a class="navitem"><span class="ic">▤</span>App registrations</a></nav>
+    <main class="main">
+      <div class="pagehead"><div><h1 class="display">Users</h1></div><div class="toolbar"><button class="btn btn-primary">＋ New user</button></div></div>
+      <div class="card flush" aria-busy="true">
+        <table class="dt">
+          <thead><tr><th>User principal name</th><th>Display name</th><th>Mail</th><th>Enabled</th><th>Password</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><span class="skel" style="width:70%"></span></td><td><span class="skel" style="width:50%"></span></td><td><span class="skel" style="width:60%"></span></td><td><span class="skel" style="width:30px"></span></td><td><span class="skel" style="width:40px"></span></td><td></td></tr>
+            <tr><td><span class="skel" style="width:60%"></span></td><td><span class="skel" style="width:55%"></span></td><td><span class="skel" style="width:50%"></span></td><td><span class="skel" style="width:30px"></span></td><td><span class="skel" style="width:40px"></span></td><td></td></tr>
+            <tr><td><span class="skel" style="width:75%"></span></td><td><span class="skel" style="width:45%"></span></td><td><span class="skel" style="width:65%"></span></td><td><span class="skel" style="width:30px"></span></td><td><span class="skel" style="width:40px"></span></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <span class="sr-only" role="status" aria-live="polite">Loading users…</span>
+    </main>
+  </div>
+</div>
+
+<div class="frame">
+  <div class="cap"><span class="route">/users</span><span>Users</span><span class="state">· empty state</span></div>
+  <div class="topbar"><span class="wordmark">Entra&nbsp;Local</span><span class="badge">▲ Local Emulator</span><span class="chip">localhost:8443 <span class="copy">⧉</span></span><span class="health"><span class="dot ok"></span> Connected · TLS ok</span></div>
+  <div class="body-row">
+    <nav class="sidenav" aria-label="Primary"><a class="navitem"><span class="ic">◧</span>Dashboard</a><a class="navitem active"><span class="ic">◔</span>Users</a><a class="navitem"><span class="ic">◑</span>Groups</a><a class="navitem"><span class="ic">▤</span>App registrations</a></nav>
+    <main class="main">
+      <div class="pagehead"><div><h1 class="display">Users</h1></div></div>
+      <div class="card">
+        <div class="empty">
+          <div class="ic">◔</div>
+          <div class="t">No users yet</div>
+          <div class="d">Create a user to sign in to apps, or run seed to load the default directory.</div>
+          <div style="display:flex;gap:8px;justify-content:center"><button class="btn btn-primary">＋ New user</button><button class="btn btn-secondary">⟳ Seed</button></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="frame">
+  <div class="cap"><span class="route">/users</span><span>Users</span><span class="state">· API error (admin error envelope)</span></div>
+  <div class="topbar"><span class="wordmark">Entra&nbsp;Local</span><span class="badge">▲ Local Emulator</span><span class="chip">localhost:8443 <span class="copy">⧉</span></span><span class="health"><span class="dot bad"></span> Unreachable</span></div>
+  <div class="body-row">
+    <nav class="sidenav" aria-label="Primary"><a class="navitem"><span class="ic">◧</span>Dashboard</a><a class="navitem active"><span class="ic">◔</span>Users</a><a class="navitem"><span class="ic">◑</span>Groups</a><a class="navitem"><span class="ic">▤</span>App registrations</a></nav>
+    <main class="main">
+      <div class="pagehead"><div><h1 class="display">Users</h1></div><div class="toolbar"><button class="btn btn-secondary">⟳ Retry</button></div></div>
+      <div class="banner banner-error" role="alert"><span class="ic">✕</span><span><strong>Couldn't load users.</strong> The admin API is unreachable (network error). <span class="muted">Check that the emulator is running on <span class="mono">localhost:8443</span>.</span></span></div>
+      <span class="sr-only" role="alert" aria-live="assertive">Error: couldn't load users.</span>
+    </main>
+  </div>
+</div>
+
+
+<!-- ============================================================= 5. USER create/edit drawer + inline 409 ============================================================= -->
+<div class="frame">
+  <div class="cap"><span class="route">/users</span><span>Users</span><span class="state">· create/edit drawer · inline 409 conflict</span></div>
+  <div class="topbar"><span class="wordmark">Entra&nbsp;Local</span><span class="badge">▲ Local Emulator</span><span class="chip">localhost:8443 <span class="copy">⧉</span></span><span class="health"><span class="dot ok"></span> Connected · TLS ok</span></div>
+  <div class="body-row">
+    <nav class="sidenav" aria-label="Primary"><a class="navitem"><span class="ic">◧</span>Dashboard</a><a class="navitem active"><span class="ic">◔</span>Users</a><a class="navitem"><span class="ic">◑</span>Groups</a><a class="navitem"><span class="ic">▤</span>App registrations</a></nav>
+    <main class="main" aria-hidden="true">
+      <div class="pagehead"><div><h1 class="display">Users</h1></div></div>
+      <div class="card flush"><table class="dt"><thead><tr><th>UPN</th><th>Display name</th><th>Enabled</th></tr></thead><tbody><tr><td class="mono b-sm">alice@contoso.local</td><td>Alice Dev</td><td><span class="yes">● Yes</span></td></tr></tbody></table></div>
+    </main>
+  </div>
+  <div class="drawer-scrim"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="drw-t">
+    <div class="drawer-head"><h2 id="drw-t" class="h-md">New user</h2><button class="iconbtn" aria-label="Close">✕</button></div>
+    <div class="drawer-body">
+      <div class="field">
+        <label for="u-upn">User principal name</label>
+        <input id="u-upn" class="input mono error" value="alice@contoso.local" aria-invalid="true" aria-describedby="u-upn-e">
+        <div class="field-error" id="u-upn-e">A user with this UPN already exists (409 conflict).</div>
+      </div>
+      <div class="field"><label for="u-dn">Display name</label><input id="u-dn" class="input" value="Alice Dev"></div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;">
+        <div class="field"><label for="u-gn">Given name</label><input id="u-gn" class="input" value="Alice"></div>
+        <div class="field"><label for="u-sn">Surname</label><input id="u-sn" class="input" value="Dev"></div>
+      </div>
+      <div class="field"><label for="u-mail">Mail <span class="muted" style="font-weight:400">(optional)</span></label><input id="u-mail" class="input" value="alice@contoso.local"></div>
+      <div class="field"><span class="switch on" tabindex="0" role="switch" aria-checked="true"><span class="track"><span class="knob"></span></span><span>Account enabled</span></span></div>
+      <div class="field">
+        <label for="u-pwd">Password <span class="muted" style="font-weight:400">(optional — leave blank for account-picker sign-in)</span></label>
+        <input id="u-pwd" class="input" type="password" placeholder="Set a password">
+        <div class="help">When set, <span class="mono">REQUIRE_PASSWORD</span> mode prompts for it. Clearing it (edit) reverts to passwordless.</div>
+      </div>
+    </div>
+    <div class="drawer-foot"><button class="btn btn-secondary">Cancel</button><button class="btn btn-primary">Create user</button></div>
+  </aside>
+</div>
+
+
+<!-- ============================================================= 6. USER delete confirm ============================================================= -->
+<div class="frame">
+  <div class="cap"><span class="route">/users</span><span>Users</span><span class="state">· delete confirm dialog</span></div>
+  <div class="topbar"><span class="wordmark">Entra&nbsp;Local</span><span class="badge">▲ Local Emulator</span><span class="chip">localhost:8443 <span class="copy">⧉</span></span><span class="health"><span class="dot ok"></span> Connected · TLS ok</span></div>
+  <div class="body-row">
+    <nav class="sidenav" aria-label="Primary"><a class="navitem"><span class="ic">◧</span>Dashboard</a><a class="navitem active"><span class="ic">◔</span>Users</a><a class="navitem"><span class="ic">◑</span>Groups</a><a class="navitem"><span class="ic">▤</span>App registrations</a></nav>
+    <main class="main" aria-hidden="true"><div class="pagehead"><div><h1 class="display">Users</h1></div></div></main>
+  </div>
+  <div class="scrim">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="del-t">
+      <h2 id="del-t">Delete user?</h2>
+      <p>Delete <strong>Carol QA</strong> (<span class="mono b-sm">carol@contoso.local</span>)? This removes the account and its group memberships. This cannot be undone.</p>
+      <div class="actions"><button class="btn btn-secondary">Cancel</button><button class="btn btn-destructive solid" autofocus>Delete user</button></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================= 7. GROUPS — table + member management drawer ============================================================= -->
+<div class="frame">
+  <div class="cap"><span class="route">/groups</span><span>Groups</span><span class="state">· loaded</span></div>
+  <div class="topbar"><span class="wordmark">Entra&nbsp;Local</span><span class="badge">▲ Local Emulator</span><span class="chip">localhost:8443 <span class="copy">⧉</span></span><span class="health"><span class="dot ok"></span> Connected · TLS ok</span></div>
+  <div class="body-row">
+    <nav class="sidenav" aria-label="Primary"><a class="navitem"><span class="ic">◧</span>Dashboard</a><a class="navitem"><span class="ic">◔</span>Users</a><a class="navitem active" aria-current="page"><span class="ic">◑</span>Groups</a><a class="navitem"><span class="ic">▤</span>App registrations</a></nav>
+    <main class="main">
+      <div class="pagehead">
+        <div><h1 class="display">Groups</h1><p class="sub">Directory groups and their members.</p></div>
+        <div class="toolbar"><div class="search"><span class="ic">⌕</span><input class="input" style="width:200px" placeholder="Search groups" aria-label="Search groups"></div><button class="btn btn-primary">＋ New group</button></div>
+      </div>
+      <div class="card flush">
+        <table class="dt">
+          <thead><tr><th>Display name</th><th>Description</th><th>Members</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><strong>Engineering</strong></td><td class="muted">App developers</td><td>3</td><td style="text-align:right"><button class="btn btn-secondary btn-sm">Manage members</button> <button class="iconbtn" aria-label="Group actions">…</button></td></tr>
+            <tr><td><strong>QA</strong></td><td class="muted">Test &amp; release</td><td>1</td><td style="text-align:right"><button class="btn btn-secondary btn-sm">Manage members</button> <button class="iconbtn" aria-label="Group actions">…</button></td></tr>
+          </tbody>
+        </table>
+        <div class="pager"><span>1–2 of 2</span><div class="grp"><span>Rows: <strong>50</strong></span><button class="btn btn-secondary btn-sm" disabled>‹ Prev</button><button class="btn btn-secondary btn-sm" disabled>Next ›</button></div></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="frame">
+  <div class="cap"><span class="route">/groups</span><span>Groups</span><span class="state">· manage members drawer · user picker (add/remove)</span></div>
+  <div class="topbar"><span class="wordmark">Entra&nbsp;Local</span><span class="badge">▲ Local Emulator</span><span class="chip">localhost:8443 <span class="copy">⧉</span></span><span class="health"><span class="dot ok"></span> Connected · TLS ok</span></div>
+  <div class="body-row">
+    <nav class="sidenav" aria-label="Primary"><a class="navitem"><span class="ic">◧</span>Dashboard</a><a class="navitem"><span class="ic">◔</span>Users</a><a class="navitem active"><span class="ic">◑</span>Groups</a><a class="navitem"><span class="ic">▤</span>App registrations</a></nav>
+    <main class="main" aria-hidden="true"><div class="pagehead"><div><h1 class="display">Groups</h1></div></div></main>
+  </div>
+  <div class="drawer-scrim"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-labelledby="gm-t" style="width:480px">
+    <div class="drawer-head"><div><h2 id="gm-t" class="h-md">Engineering</h2><p class="b-sm muted">Members · 3</p></div><button class="iconbtn" aria-label="Close">✕</button></div>
+    <div class="drawer-body">
+      <h3 class="lbl-caps" style="margin-bottom:8px">Members</h3>
+      <div class="member"><span class="avatar" style="background:var(--primary-60)">AD</span><div style="flex:1"><div style="font-weight:600">Alice Dev</div><div class="b-sm muted mono">alice@contoso.local</div></div><button class="btn btn-secondary btn-sm">Remove</button></div>
+      <div class="member"><span class="avatar" style="background:var(--accent-60)">BT</span><div style="flex:1"><div style="font-weight:600">Bob Tester</div><div class="b-sm muted mono">bob@contoso.local</div></div><button class="btn btn-secondary btn-sm">Remove</button></div>
+      <div class="member"><span class="avatar" style="background:var(--neutral-60)">DO</span><div style="flex:1"><div style="font-weight:600">Dan Ops</div><div class="b-sm muted mono">dan@contoso.local</div></div><button class="btn btn-secondary btn-sm">Remove</button></div>
+
+      <h3 class="lbl-caps" style="margin:24px 0 8px">Add member</h3>
+      <div class="search" style="margin-bottom:8px"><span class="ic">⌕</span><input class="input" placeholder="Search users to add" aria-label="Search users to add"></div>
+      <div style="border:1px solid var(--neutral-80);border-radius:var(--r-md);box-shadow:var(--depth-8);background:var(--surface);max-height:160px;overflow:auto">
+        <div class="picker-row"><span class="avatar" style="background:var(--primary-40)">CQ</span><div style="flex:1"><div style="font-weight:600">Carol QA</div><div class="b-sm muted mono">carol@contoso.local</div></div><span class="link">Add</span></div>
+        <div class="picker-row" style="background:var(--neutral-95);color:var(--neutral-60)"><span class="avatar" style="background:var(--neutral-60)">AD</span><div style="flex:1"><div style="font-weight:600">Alice Dev</div><div class="b-sm muted mono">already a member</div></div></div>
+      </div>
+    </div>
+    <div class="drawer-foot"><button class="btn btn-secondary">Close</button></div>
+  </aside>
+</div>
+
+
+<!-- ============================================================= 8. APP REGISTRATIONS — list ============================================================= -->
+<div class="frame">
+  <div class="cap"><span class="route">/apps</span><span>App registrations</span><span class="state">· loaded</span></div>
+  <div class="topbar"><span class="wordmark">Entra&nbsp;Local</span><span class="badge">▲ Local Emulator</span><span class="chip">localhost:8443 <span class="copy">⧉</span></span><span class="health"><span class="dot ok"></span> Connected · TLS ok</span></div>
+  <div class="body-row">
+    <nav class="sidenav" aria-label="Primary"><a class="navitem"><span class="ic">◧</span>Dashboard</a><a class="navitem"><span class="ic">◔</span>Users</a><a class="navitem"><span class="ic">◑</span>Groups</a><a class="navitem active" aria-current="page"><span class="ic">▤</span>App registrations</a></nav>
+    <main class="main">
+      <div class="pagehead">
+        <div><h1 class="display">App registrations</h1><p class="sub">Client apps that authenticate against the emulator.</p></div>
+        <div class="toolbar"><div class="search"><span class="ic">⌕</span><input class="input" style="width:200px" placeholder="Search apps" aria-label="Search apps"></div><button class="btn btn-primary">＋ New app</button></div>
+      </div>
+      <div class="card flush">
+        <table class="dt">
+          <thead><tr><th>Display name</th><th>Application (client) ID</th><th>Type</th><th>Redirect URIs</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><a class="link">Contoso SPA</a></td><td><span class="chip">8f2a1c9b…c1d9 <span class="copy">⧉</span></span></td><td><span class="no">Public</span></td><td>2</td><td style="text-align:right"><button class="iconbtn" aria-label="App actions">…</button></td></tr>
+            <tr><td><a class="link">Contoso API daemon</a></td><td><span class="chip">3b77ee01…42af <span class="copy">⧉</span></span></td><td><span class="yes">● Confidential</span></td><td>0</td><td style="text-align:right"><button class="iconbtn" aria-label="App actions">…</button></td></tr>
+            <tr><td><a class="link">Contoso Web</a></td><td><span class="chip">a91f5d44…7b30 <span class="copy">⧉</span></span></td><td><span class="yes">● Confidential</span></td><td>1</td><td style="text-align:right"><button class="iconbtn" aria-label="App actions">…</button></td></tr>
+          </tbody>
+        </table>
+        <div class="pager"><span>1–3 of 3</span><div class="grp"><span>Rows: <strong>50</strong></span><button class="btn btn-secondary btn-sm" disabled>‹ Prev</button><button class="btn btn-secondary btn-sm" disabled>Next ›</button></div></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+
+<!-- ============================================================= 9. APP DETAIL / EDIT ============================================================= -->
+<div class="frame">
+  <div class="cap"><span class="route">/apps/8f2a…c1d9</span><span>App detail</span><span class="state">· Basics · Redirect URIs · Secrets · Scopes · Roles · MSAL · Delete</span></div>
+  <div class="topbar"><span class="wordmark">Entra&nbsp;Local</span><span class="badge">▲ Local Emulator</span><span class="chip">localhost:8443 <span class="copy">⧉</span></span><span class="health"><span class="dot ok"></span> Connected · TLS ok</span></div>
+  <div class="body-row">
+    <nav class="sidenav" aria-label="Primary"><a class="navitem"><span class="ic">◧</span>Dashboard</a><a class="navitem"><span class="ic">◔</span>Users</a><a class="navitem"><span class="ic">◑</span>Groups</a><a class="navitem active"><span class="ic">▤</span>App registrations</a></nav>
+    <main class="main">
+      <p class="b-sm" style="margin:0 0 8px"><a class="link">‹ App registrations</a></p>
+      <div class="pagehead">
+        <div>
+          <h1 class="display">Contoso SPA</h1>
+          <p class="sub" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Client ID <span class="chip">8f2a1c9b-7e44-4f0a-9d21-0f3b8a6cc1d9 <span class="copy">⧉</span></span></p>
+        </div>
+        <div class="toolbar"><button class="btn btn-secondary">Cancel</button><button class="btn btn-primary">Save changes</button></div>
+      </div>
+
+      <div class="stack">
+        <!-- Basics -->
+        <section class="card">
+          <h2 class="h-md" style="margin-bottom:16px">Basics</h2>
+          <div class="field"><label for="a-dn">Display name</label><input id="a-dn" class="input" value="Contoso SPA"></div>
+          <div class="field"><span class="switch" tabindex="0" role="switch" aria-checked="false"><span class="track"><span class="knob"></span></span><span>Confidential client</span></span><div class="help">Off = public client (SPA / native, PKCE). On = confidential (web / daemon, supports client secrets &amp; <span class="mono">.default</span>).</div></div>
+          <div class="field"><label for="a-uri">Application ID URI <span class="muted" style="font-weight:400">(optional)</span></label><input id="a-uri" class="input mono" value="api://8f2a1c9b-7e44-4f0a-9d21-0f3b8a6cc1d9"><div class="help">Must be unique across apps. Used for <span class="mono">&lt;appIdUri&gt;/.default</span> scope resolution.</div></div>
+        </section>
+
+        <!-- Redirect URIs -->
+        <section class="card flush">
+          <div class="card-head"><h2 class="h-md">Redirect URIs</h2><button class="btn btn-secondary btn-sm">＋ Add URI</button></div>
+          <table class="dt">
+            <thead><tr><th>URI</th><th>Type</th><th></th></tr></thead>
+            <tbody>
+              <tr><td class="mono b-sm">https://localhost:3000/auth/callback</td><td><span class="chip">spa</span></td><td style="text-align:right"><button class="btn btn-secondary btn-sm">Remove</button></td></tr>
+              <tr><td class="mono b-sm">https://localhost:3000/silent.html</td><td><span class="chip">spa</span></td><td style="text-align:right"><button class="btn btn-secondary btn-sm">Remove</button></td></tr>
+            </tbody>
+          </table>
+          <div style="display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--neutral-85)">
+            <input class="input mono" style="flex:1" placeholder="https://localhost:3000/callback" aria-label="New redirect URI">
+            <select class="input" style="width:120px" aria-label="Redirect URI type"><option>spa</option><option>web</option><option>native</option></select>
+            <button class="btn btn-secondary">Add</button>
+          </div>
+        </section>
+
+        <!-- Secrets -->
+        <section class="card flush">
+          <div class="card-head"><div><h2 class="h-md">Client secrets</h2><p class="b-sm muted" style="margin-top:2px">Confidential clients only. Shown once at creation.</p></div><button class="btn btn-secondary btn-sm">＋ New secret</button></div>
+          <table class="dt">
+            <thead><tr><th>Description</th><th>Hint</th><th>Expires</th><th>Created</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>CI pipeline</td><td><span class="chip">ab…yz</span></td><td>2026-12-31</td><td class="muted">2026-06-22</td><td style="text-align:right"><button class="btn btn-secondary btn-sm">Delete</button></td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Exposed scopes -->
+        <section class="card flush">
+          <div class="card-head"><h2 class="h-md">Exposed scopes</h2><button class="btn btn-secondary btn-sm">＋ Add scope</button></div>
+          <table class="dt">
+            <thead><tr><th>Scope value</th><th>Admin consent display name</th><th>State</th><th></th></tr></thead>
+            <tbody>
+              <tr><td><span class="chip">access_as_user</span></td><td>Access Contoso API as the user</td><td><span class="switch on" tabindex="0" role="switch" aria-checked="true"><span class="track"><span class="knob"></span></span><span class="b-sm">Enabled</span></span></td><td style="text-align:right"><button class="iconbtn" aria-label="Scope actions">…</button></td></tr>
+              <tr><td><span class="chip">files.read</span></td><td>Read user files</td><td><span class="switch" tabindex="0" role="switch" aria-checked="false"><span class="track"><span class="knob"></span></span><span class="b-sm muted">Disabled</span></span></td><td style="text-align:right"><button class="iconbtn" aria-label="Scope actions">…</button></td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- App roles -->
+        <section class="card flush">
+          <div class="card-head"><h2 class="h-md">App roles</h2><button class="btn btn-secondary btn-sm">＋ Add role</button></div>
+          <table class="dt">
+            <thead><tr><th>Value</th><th>Display name</th><th>Member types</th><th>State</th><th></th></tr></thead>
+            <tbody>
+              <tr><td><span class="chip">Tasks.Read</span></td><td>Read tasks</td><td><span class="chip">Application</span></td><td><span class="switch on" tabindex="0" role="switch" aria-checked="true"><span class="track"><span class="knob"></span></span><span class="b-sm">Enabled</span></span></td><td style="text-align:right"><button class="iconbtn" aria-label="Role actions">…</button></td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- MSAL snippet -->
+        <section class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px"><h2 class="h-md">MSAL configuration</h2><div class="search" style="width:240px"><span class="ic">↪</span><select class="input" style="padding-left:30px" aria-label="Redirect URI for snippet"><option>https://localhost:3000/auth/callback</option><option>https://localhost:3000/silent.html</option></select></div></div>
+          <div class="tabs" role="tablist">
+            <button class="tab active" role="tab" aria-selected="true">@azure/msal-browser</button>
+            <button class="tab" role="tab" aria-selected="false">@azure/msal-node</button>
+          </div>
+          <div class="code" role="region" aria-label="MSAL browser configuration snippet">
+<button class="cp">⧉ Copy</button><span class="c-key">import</span> { PublicClientApplication } <span class="c-key">from</span> <span class="c-str">"@azure/msal-browser"</span>;
+
+<span class="c-key">const</span> msalConfig = {
+  auth: {
+    clientId: <span class="c-str">"8f2a1c9b-7e44-4f0a-9d21-0f3b8a6cc1d9"</span>,
+    authority: <span class="c-str">"https://localhost:8443/11111111-1111-1111-1111-111111111111"</span>,
+    knownAuthorities: [<span class="c-str">"localhost:8443"</span>],   <span class="c-com">// custom authority — required</span>
+    redirectUri: <span class="c-str">"https://localhost:3000/auth/callback"</span>,
+    protocolMode: <span class="c-str">"OIDC"</span>
+  },
+  cache: { cacheLocation: <span class="c-str">"sessionStorage"</span> }
+};
+
+<span class="c-key">export const</span> loginRequest = {
+  scopes: [<span class="c-str">"openid"</span>, <span class="c-str">"profile"</span>, <span class="c-str">"email"</span>, <span class="c-str">"offline_access"</span>, <span class="c-str">"User.Read"</span>]
+};
+
+<span class="c-com">// Microsoft Graph (minimal emulator)</span>
+<span class="c-key">export const</span> graphConfig = { graphBase: <span class="c-str">"https://localhost:8443/graph"</span> };</div>
+          <div class="banner banner-caution" style="margin-top:12px"><span class="ic">⚠</span><span>Trust the emulator's self-signed cert (or set <span class="mono">NODE_TLS_REJECT_UNAUTHORIZED=0</span> in dev) so MSAL can reach <span class="mono">localhost:8443</span>. Values are deterministic for the current seed/config.</span></div>
+        </section>
+
+        <!-- Delete app -->
+        <section class="card" style="border-color:var(--error-60)">
+          <h2 class="h-md" style="color:var(--error-80);margin-bottom:8px">Delete app registration</h2>
+          <p class="b-sm muted" style="margin:0 0 12px">Deleting <strong>Contoso SPA</strong> permanently removes its client ID, redirect URIs, secrets, exposed scopes and app roles. Apps using this client ID will stop authenticating. This cannot be undone.</p>
+          <button class="btn btn-destructive">Delete app</button>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+
+
+<!-- ============================================================= 10. SECRET show-once dialog ============================================================= -->
+<div class="frame">
+  <div class="cap"><span class="route">/apps/8f2a…c1d9</span><span>App detail</span><span class="state">· secret show-once dialog (copy now or lose it)</span></div>
+  <div class="topbar"><span class="wordmark">Entra&nbsp;Local</span><span class="badge">▲ Local Emulator</span><span class="chip">localhost:8443 <span class="copy">⧉</span></span><span class="health"><span class="dot ok"></span> Connected · TLS ok</span></div>
+  <div class="body-row">
+    <nav class="sidenav" aria-label="Primary"><a class="navitem"><span class="ic">◧</span>Dashboard</a><a class="navitem"><span class="ic">◔</span>Users</a><a class="navitem"><span class="ic">◑</span>Groups</a><a class="navitem active"><span class="ic">▤</span>App registrations</a></nav>
+    <main class="main" aria-hidden="true"><div class="pagehead"><div><h1 class="display">Contoso SPA</h1></div></div></main>
+  </div>
+  <div class="scrim">
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="sec-t" aria-describedby="sec-d" style="width:480px">
+      <h2 id="sec-t">Client secret created</h2>
+      <div class="banner banner-caution" id="sec-d" style="margin-bottom:16px"><span class="ic">⚠</span><span><strong>Copy this secret now.</strong> For security it is shown only once and cannot be retrieved again. If you lose it, delete this secret and create a new one.</span></div>
+      <label for="sec-v">Secret value</label>
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <input id="sec-v" class="input mono" readonly value="x7Q~aB3kL9pZ2mN5rT8wYf1Dc4Gh6Jv0Es" style="background:var(--neutral-95)">
+        <button class="btn btn-primary">⧉ Copy</button>
+      </div>
+      <div class="kv" style="grid-template-columns:120px 1fr;margin-bottom:16px">
+        <div class="k">Description</div><div>CI pipeline</div>
+        <div class="k">Hint</div><div><span class="chip">x7…Es</span></div>
+        <div class="k">Expires</div><div>2026-12-31</div>
+      </div>
+      <span class="sr-only" role="status" aria-live="polite">Secret created. Copy it now; it will not be shown again.</span>
+      <div class="actions"><button class="btn btn-secondary" autofocus>Close</button></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================= 11. New app — empty redirect + create flow / toasts ============================================================= -->
+<div class="frame">
+  <div class="cap"><span class="route">/apps</span><span>App registrations</span><span class="state">· empty state + success toast (aria-live)</span></div>
+  <div class="topbar"><span class="wordmark">Entra&nbsp;Local</span><span class="badge">▲ Local Emulator</span><span class="chip">localhost:8443 <span class="copy">⧉</span></span><span class="health"><span class="dot ok"></span> Connected · TLS ok</span></div>
+  <div class="body-row">
+    <nav class="sidenav" aria-label="Primary"><a class="navitem"><span class="ic">◧</span>Dashboard</a><a class="navitem"><span class="ic">◔</span>Users</a><a class="navitem"><span class="ic">◑</span>Groups</a><a class="navitem active"><span class="ic">▤</span>App registrations</a></nav>
+    <main class="main">
+      <div class="pagehead"><div><h1 class="display">App registrations</h1></div></div>
+      <div class="card"><div class="empty"><div class="ic">▤</div><div class="t">No app registrations yet</div><div class="d">Register an app to get a client ID and a ready-to-paste MSAL config.</div><button class="btn btn-primary">＋ New app</button></div></div>
+    </main>
+  </div>
+  <div class="toaststack">
+    <span class="toast" role="status" aria-live="polite"><span class="ok">✓</span> Saved — Contoso SPA updated.</span>
+    <span class="toast"><span class="ok">✓</span> Client secret copied — you won't see it again.</span>
+    <span class="toast"><span class="bad">✕</span> Couldn't delete app (409 conflict).</span>
+  </div>
+</div>
+
+
+<div class="note">
+  <strong>Accessibility / aria-live note for Baracus:</strong> mount one polite <code>role="status"</code> region and one assertive <code>role="alert"</code> region at the app shell root (visually hidden, <code>.sr-only</code>). Route copy/save/seed/reset confirmations and toast text through the polite region; route load/mutation failures through the assertive region. Dialogs and drawers are <code>role="dialog" aria-modal="true"</code>, trap focus (first focusable / a sensible default gets <code>autofocus</code>), return focus to the invoking control on close, and dismiss on <kbd>Esc</kbd> + scrim click. Every control has a visible 2px <span class="mono">#0078D4</span> focus ring (never removed). Status is always color + icon + text, never color alone.
+</div>
+
+</body>
+</html>

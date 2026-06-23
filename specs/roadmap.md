@@ -51,17 +51,17 @@ minimal Graph endpoints. Runs via `npm start` and Docker.
 | # | Feature | Description | UI | Dependencies | Status |
 |---|---------|-------------|----|--------------|--------|
 | 1 | Server, config & TLS foundation + scaffolding | HTTPS server with auto self-signed cert, config loading/validation, health endpoint; project scaffold with npm scripts (`dev`/`build`/`test`/`test:e2e`/`lint`/`typecheck`), a unit+integration test harness, a real-MSAL e2e harness (incl. headless browser), and CI pipeline | – | – | ✅ |
-| 2 | SQLite store, schema & seed | Repository layer, migrations, deterministic seed data | – | 1 | ⬜ |
-| 3 | Signing keys & JWKS endpoint | Persisted RSA key(s); `/discovery/v2.0/keys` so resource APIs verify tokens | – | 1, 2 | ⬜ |
-| 4 | OIDC discovery document | `.well-known/openid-configuration` driving MSAL auto-config | – | 1, 3 | ⬜ |
-| 5 | Token service | Mint/sign/validate ID & access JWTs; claims, lifetimes, code/refresh validation | – | 2, 3 | ⬜ |
-| 6 | Auth Code + PKCE + interactive sign-in | `/authorize` + `/token` (code grant) with account-picker sign-in page | ✓ | 4, 5 | ⬜ |
-| 7 | Refresh Token flow | Rotating refresh tokens for silent renewal (`offline_access`) | – | 6 | ⬜ |
-| 8 | Client Credentials flow | App-only tokens with `roles` for daemon/service apps | – | 5 | ⬜ |
-| 9 | UserInfo & Logout endpoints | OIDC `userinfo` + front-channel `logout` (advertised by discovery) | – | 5, 6 | ⬜ |
-| 10 | Minimal Microsoft Graph | Read `/me`, `/users`, `/groups` — proves the access-token mint→consume loop | – | 2, 5 | ⬜ |
-| 11 | Admin REST API | CRUD for users, groups, apps, secrets, scopes/roles; seed/reset | – | 2 | ⬜ |
-| 12 | Web portal | Dashboard, users, groups, app registrations, per-app MSAL config snippet | ✓ | 11 | ⬜ |
+| 2 | SQLite store, schema & seed | Repository layer, migrations, deterministic seed data | – | 1 | ✅ |
+| 3 | Signing keys & JWKS endpoint | Persisted RSA key(s); `/discovery/v2.0/keys` so resource APIs verify tokens | – | 1, 2 | ✅ |
+| 4 | OIDC discovery document | `.well-known/openid-configuration` driving MSAL auto-config | – | 1, 3 | ✅ |
+| 5 | Token service | Mint/sign/validate ID & access JWTs; claims, lifetimes, code/refresh validation | – | 2, 3 | ✅ |
+| 6 | Auth Code + PKCE + interactive sign-in | `/authorize` + `/token` (code grant) with account-picker sign-in page | ✓ | 4, 5 | ✅ |
+| 7 | Refresh Token flow | Rotating refresh tokens for silent renewal (`offline_access`) | – | 6 | ✅ |
+| 8 | Client Credentials flow | App-only tokens with `roles` for daemon/service apps | – | 5 | ✅ |
+| 9 | UserInfo & Logout endpoints | OIDC `userinfo` + front-channel `logout` (advertised by discovery) | – | 5, 6 | ✅ |
+| 10 | Minimal Microsoft Graph | Read `/me`, `/users`, `/groups` — proves the access-token mint→consume loop | – | 2, 5 | ✅ |
+| 11 | Admin REST API | CRUD for users, groups, apps, secrets, scopes/roles; seed/reset | – | 2 | ✅ |
+| 12 | Web portal | Dashboard, users, groups, app registrations, per-app MSAL config snippet | ✓ | 11 | ✅ |
 | 13 | MSAL compatibility validation | Real-MSAL e2e for `msal-browser` & `msal-node` (sign-in / silent-refresh / sign-out) **plus** an authority/instance-discovery smoke-test for **MSAL.NET and MSAL Python**; provisions .NET + Python runtimes in CI; documents `protocolMode`/`knownAuthorities` per platform | – | 6, 7, 9 | ⬜ |
 | 14 | Run targets: `npm start` + Docker | Runnable from source and as a container with persisted volume | – | 1 | ⬜ |
 

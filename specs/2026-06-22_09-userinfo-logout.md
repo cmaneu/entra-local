@@ -2,7 +2,7 @@
 
 - **Roadmap ref:** Iteration 1, feature #9 ("UserInfo & Logout endpoints").
 - **Dependencies:** [#5](2026-06-22_05-token-service.md) (`validateAccessToken`, claim sets), [#6](2026-06-22_06-auth-code-pkce-signin.md) (sessions, sign-in, e2e harness). Transitively [#2](2026-06-22_02-sqlite-store-schema-seed.md) (`sessions`, `users`, redirect URIs), [#4](2026-06-22_04-oidc-discovery.md) (these endpoints are advertised in discovery).
-- **Status:** ⬜ Not started.
+- **Status:** ✅ Implemented.
 
 > **Canonical-reference notice.** This spec owns the **UserInfo response claim set** and the **end-session / logout** behavior. It REPLACES the `501` stubs for `/graph/oidc/userinfo` and `/{tenant}/oauth2/v2.0/logout`. Both URLs are already advertised by [#4](2026-06-22_04-oidc-discovery.md) (`userinfo_endpoint`, `end_session_endpoint`).
 

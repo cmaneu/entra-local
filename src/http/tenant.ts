@@ -33,10 +33,13 @@ export function tenantGuard(style: 'oauth' | 'discovery'): preHandlerHookHandler
     }
 
     if (style === 'oauth') {
-      void reply.code(400).send({
-        error: 'invalid_request',
-        error_description: `Unknown tenant '${tenant}'.`,
-      });
+      void reply
+        .code(400)
+        .header('cache-control', 'no-store')
+        .send({
+          error: 'invalid_request',
+          error_description: `Unknown tenant '${tenant}'.`,
+        });
     } else {
       void reply.code(404).send({
         error: { code: 'tenant_not_found', message: `Unknown tenant '${tenant}'.` },

@@ -13,6 +13,33 @@ export const RESERVED_PREFIXES = ['/health', '/graph', '/admin'] as const;
 export const TENANT_ALIASES = ['common', 'organizations', 'consumers'] as const;
 
 /**
+ * Canonical tenanted endpoint path suffixes (the part after `/{tenant}/`). Single source of
+ * truth shared by route registration (`/:tenant/${suffix}`) and the OIDC discovery document's
+ * advertised endpoint URLs (`${PUBLIC_ORIGIN}/${tenantId}/${suffix}`), so every advertised URL
+ * provably maps to a registered route (a `501` stub or real handler per the Reserved-stub rule).
+ */
+export const TENANT_ENDPOINTS = {
+  discovery: 'v2.0/.well-known/openid-configuration',
+  authorize: 'oauth2/v2.0/authorize',
+  token: 'oauth2/v2.0/token',
+  jwks: 'discovery/v2.0/keys',
+  logout: 'oauth2/v2.0/logout',
+  devicecode: 'oauth2/v2.0/devicecode',
+} as const;
+
+/**
+ * Canonical single-origin UserInfo path (under `/graph`, not `/{tenant}/...`). Locked path map
+ * overrides the draft global-spec `/{tenant}/openid/userinfo`. Advertised by discovery (#4),
+ * implemented by #9.
+ */
+export const USERINFO_PATH = '/graph/oidc/userinfo';
+
+/** Build a registered tenanted route template (`/:tenant/${suffix}`) for Fastify registration. */
+export function tenantRoute(suffix: string): string {
+  return `/:tenant/${suffix}`;
+}
+
+/**
  * Second path segment values that mark a `/{tenant}/...` route as API (not SPA). Used so an
  * unmatched tenant-shaped GET returns a JSON 404 instead of the SPA placeholder.
  */

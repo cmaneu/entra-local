@@ -1,6 +1,6 @@
 import type { Configuration as BrowserConfiguration } from '@azure/msal-browser';
 import { ConfidentialClientApplication, type Configuration } from '@azure/msal-node';
-import type { Browser } from 'playwright';
+import type { Browser, BrowserContext } from 'playwright';
 
 /**
  * Real-MSAL e2e drivers (feature #1 wires these; flow assertions are added by #6/#7/#8/#9).
@@ -61,13 +61,27 @@ export function browserMsalConfig(
 }
 
 /**
- * Launch a headless Chromium that accepts the emulator's self-signed cert. WIRED but NOT
- * exercised in #1 — interactive `@azure/msal-browser` flows are driven here starting in #6.
- * Gated behind `E2E_BROWSER=1` so the #1 e2e suite (and CI without a browser download) is green.
+ * Launch a headless Chromium that accepts the emulator's self-signed cert. WIRED in #1 and now
+ * exercised for real by the feature #6 Auth Code + PKCE e2e (`test/e2e/auth-code.e2e.ts`). The
+ * `browserFlowsEnabled` gate still guards the #1 informational suite; #6's suite drives the browser
+ * directly via {@link launchBrowserContext}.
  */
 export async function launchBrowser(): Promise<Browser> {
   const { chromium } = await import('playwright');
   return chromium.launch({ headless: true });
+}
+
+/**
+ * Launch a headless Chromium and open a browser context that trusts the emulator's self-signed cert
+ * (`ignoreHTTPSErrors`). Used by the real-MSAL Auth Code + PKCE e2e to drive `@azure/msal-browser`.
+ */
+export async function launchBrowserContext(): Promise<{
+  browser: Browser;
+  context: BrowserContext;
+}> {
+  const browser = await launchBrowser();
+  const context = await browser.newContext({ ignoreHTTPSErrors: true });
+  return { browser, context };
 }
 
 /** Whether interactive browser e2e flows should run (off until #6). */

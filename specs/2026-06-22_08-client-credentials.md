@@ -2,7 +2,7 @@
 
 - **Roadmap ref:** Iteration 1, feature #8 ("Client Credentials flow").
 - **Dependencies:** [#5](2026-06-22_05-token-service.md) (app-only access-token claims, audience rule, token-response builder). Transitively [#2](2026-06-22_02-sqlite-store-schema-seed.md) (`app_registrations`, `app_secrets`, `app_roles`, `verifySecret`), [#6](2026-06-22_06-auth-code-pkce-signin.md) (canonical OAuth error convention, the `/token` route it multiplexes into).
-- **Status:** ⬜ Not started.
+- **Status:** ✅ Implemented.
 
 > **Canonical-reference notice.** This spec owns **`.default`-scope resolution and the app-role auto-grant model** for app-only tokens. It REPLACES the `501` token-endpoint behavior for `grant_type=client_credentials` only (the route is registered by #6; #8 multiplexes the grant in).
 

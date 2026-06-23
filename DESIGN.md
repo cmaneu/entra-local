@@ -290,6 +290,51 @@ components:
   status-dot-local:
     backgroundColor: "{colors.accent-60}"
     textColor: "{colors.neutral-100}"
+  # Portal extensions (feature #12) — appended; reuse existing roles only.
+  drawer:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.on-surface}"
+    rounded: "{rounded.none}"
+    width: 440px
+    padding: "{spacing.card}"
+  dialog:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.on-surface}"
+    rounded: "{rounded.lg}"
+    width: 440px
+    padding: "{spacing.card}"
+  dialog-scrim:
+    backgroundColor: "{colors.neutral-10}"
+  stat-tile:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.on-surface}"
+    typography: "{typography.display}"
+    rounded: "{rounded.md}"
+    padding: 16px 20px
+  code-block:
+    backgroundColor: "{colors.neutral-10}"
+    textColor: "{colors.neutral-100}"
+    typography: "{typography.code-md}"
+    rounded: "{rounded.md}"
+    padding: 16px 18px
+  tab:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.neutral-40}"
+    typography: "{typography.label-md}"
+  tab-active:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.primary-30}"
+    typography: "{typography.label-md}"
+  pagination:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.neutral-40}"
+    typography: "{typography.body-sm}"
+  toggle-on:
+    backgroundColor: "{colors.primary-60}"
+    textColor: "{colors.neutral-100}"
+  toggle-off:
+    backgroundColor: "{colors.neutral-60}"
+    textColor: "{colors.neutral-100}"
 ---
 
 # Entra Local — Visual Identity
@@ -605,6 +650,73 @@ Transient confirmation, bottom-right. Dark `neutral-10` surface, white text,
 Centered within the content/card: a muted 24px line icon, a `headline-sm` title
 ("No app registrations yet"), one line of `body-sm`/`neutral-40` guidance, and a
 single primary action ("New app"). Honest, technical copy — no illustrations.
+
+<!-- Portal extensions (feature #12) — appended subsections; existing entries unchanged. -->
+
+### Data tables — paging, search & row actions (portal)
+The dense data table (above) gains a **command row** above it (search box left/right
+of a single `button-primary`, e.g. "New user"/"New app") and a **pagination footer**
+(`pagination`): a 1px `neutral-85` top border, a `body-sm`/`neutral-40` range label
+("1–4 of 4"), the page size, and `Prev`/`Next` secondary buttons (disabled at the
+ends, mapping to the API's `top`/`skip`). Search maps to the API `?search=`. The
+trailing `…` column is a `neutral-40` overflow icon button (Edit / Delete / Manage).
+ID columns always render as identifier chips, never bare text.
+
+### Drawer / side panel (`drawer`)
+The create/edit surface for a single record (user, group members). A right-anchored
+panel, full shell height, 440–480px wide, `surface`, `depth-64`, **sharp** left edge
+(`rounded.none`) over a `neutral-10`@40% scrim. Structure: a header (`headline-md`
+title + close `✕` icon button, 1px `neutral-85` bottom border), a scrolling body
+(`spacing.card` padding, stacked form fields), and a footer (1px `neutral-85` top
+border) with the primary action right-aligned and a `Cancel` secondary. Enters with
+a 200ms decelerate slide+fade (instant under `prefers-reduced-motion`).
+`role="dialog" aria-modal="true"`, focus-trapped, returns focus to the invoking row
+on close, dismissible via `Esc` / scrim / Cancel. Prefer the drawer for multi-field
+edits; reserve the dialog for short confirms.
+
+### Dialog (modal) (`dialog`)
+Centered confirmation/notice modal: `surface`, 8px radius (`rounded.lg`), `depth-64`,
+440–480px, 24px padding, over the `neutral-10`@40% scrim (`dialog-scrim`). A
+`headline-md` title, `body-md` description, optional banner, and right-aligned
+actions (one primary or — for destructive confirms — an `error-60`-filled button +
+`Cancel`). Used for reset, delete-user, delete-app (with a `banner-caution` cascade
+warning), and the secret show-once. `aria-modal`, focus-trapped, the safe default
+gets `autofocus`, `Esc`/scrim/Cancel dismiss.
+
+### Copy-once secret dialog
+A specialization of the dialog for `POST .../secrets`' one-time `secretText`. Leads
+with a `banner-caution` ("Copy this secret now — shown only once, cannot be
+retrieved"), then a **read-only** mono `input` (on `neutral-95`) paired with a
+`button-primary` "Copy", then a small key/value block (description, `hint` chip,
+`expiresAt`). A polite `aria-live` announces creation. The plaintext lives only in
+component state, is never re-fetchable, and the dialog never auto-dismisses — the
+user closes it deliberately. Existing secrets elsewhere render masked (`hint` chip
+only), never the value.
+
+### Code snippet block (`code-block`)
+The MSAL config panel. A dark `neutral-10` surface, `neutral-100` text, `code-md`
+(Cascadia Mono), 4px radius, 16–18px padding, horizontal scroll, with a translucent
+**Copy** button pinned top-right that copies the full snippet (icon→check + polite
+"Copied" on success). Light syntax tinting only (keys/strings/comments) — no themed
+rainbow. Preceded by `tab`/`tab-active` tabs (`@azure/msal-browser` /
+`@azure/msal-node`) — the active tab carries a 2px `primary-60` underline and
+`primary-30` text — and a redirect-URI selector that re-templates the snippet. All
+emitted identifiers (clientId, authority, knownAuthorities, redirectUri, graphBase)
+are deterministic from the app + emulator config.
+
+### Stat tiles (`stat-tile`) & endpoint rows (dashboard)
+**Stat tiles:** white `card`-style tiles in a 3-up grid showing live counts
+(users/groups/apps) — a `display` (28px/600) number over a `label-caps`/`neutral-40`
+key. **Endpoint rows:** a key/value list (issuer, discovery, JWKS, authorize, token)
+with the value in `code-sm` mono (middle-ellipsis truncated) and a trailing copy icon
+button; issuer/tenant also surface as identifier chips in the top bar.
+
+### Toggle switch (`toggle-on`/`toggle-off`)
+A `full`-radius track with a white knob for booleans (`accountEnabled`,
+`isConfidential`, scope/role `isEnabled`). On → `primary-60` track, knob right; off →
+`neutral-60` track, knob left; 150ms transition; focus → 2px `primary-60` ring at 2px
+offset. `role="switch"` + `aria-checked`; always paired with a text label (never color
+alone).
 
 ## Do's and Don'ts
 
