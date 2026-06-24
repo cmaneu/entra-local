@@ -100,12 +100,80 @@ See the [roadmap](specs/roadmap.md) for what may land in later iterations.
 
 ## Running the emulator
 
-Entra Local runs two ways with **identical behavior and one config/data model** — the only
-difference is where the persisted `data/` directory lives (host working directory vs. a Docker
-volume). Both serve HTTPS on `8443` by default, auto-generate and persist a self-signed
-certificate, and seed a deterministic directory on first boot.
+Entra Local runs several ways with **identical behavior and one config/data model** — the only
+difference is where the persisted `data/` directory lives (a Docker volume vs. the host working
+directory). The quickest start is the **prebuilt Docker image**; you can also run from source or
+as a single-file binary. Every target serves HTTPS on `8443` by default, auto-generates and
+persists a self-signed certificate, and seeds a deterministic directory on first boot.
 
-### 1. From source (`npm start`)
+### 1. Docker (recommended)
+
+Pull and run the prebuilt image from the GitHub Container Registry — no clone, no toolchain:
+
+```bash
+docker pull ghcr.io/cmaneu/entra-local
+docker run -p 8443:8443 -v entra-local-data:/app/data ghcr.io/cmaneu/entra-local
+# Portal:    https://localhost:8443/
+# Health:    https://localhost:8443/health        -> {"status":"ok", ...}
+# Discovery: https://localhost:8443/{tenantId}/v2.0/.well-known/openid-configuration
+```
+
+The image is a hardened multi-stage build (Node 24 base for the built-in `node:sqlite`
+driver), runs as a **non-root** user, and ships only the runtime (compiled server + prebuilt
+portal asset + production dependencies — no React/Vite/test toolchain). It declares a
+`HEALTHCHECK` that polls `/health` over TLS and a `VOLUME` at `/app/data`. `:latest` tracks the
+newest full release; pin a specific version with `ghcr.io/cmaneu/entra-local:<version>`.
+
+- **Persistence:** mount a named volume at **`/app/data`** so the SQLite DB and the
+  auto-generated cert (stable fingerprint) survive `docker stop`/`docker start` and upgrades.
+- **Port mapping:** the container binds `HOST=0.0.0.0` internally (so the published port is
+  reachable from the host) while issuer/origin still default to `https://localhost:8443`. Map
+  it with `-p 8443:8443` (or `-p <hostPort>:8443`).
+- **Config passthrough:** every config key is read from the environment — for example:
+
+  ```bash
+  docker run -p 9000:9000 \
+    -e PORT=9000 \
+    -e TENANT_ID=11111111-1111-1111-1111-111111111111 \
+    -e REQUIRE_PASSWORD=true \
+    -v entra-local-data:/app/data ghcr.io/cmaneu/entra-local
+  ```
+
+- **Fronted differently?** If clients reach the emulator at something other than
+  `https://localhost:8443` (a different host/port, or behind a proxy), set `PUBLIC_ORIGIN`
+  (and optionally `ISSUER`) so discovery/JWKS/token URLs and the token `iss` match what
+  clients actually use — e.g. `-e PUBLIC_ORIGIN=https://entra.localtest.me:8443`.
+
+#### Docker Compose
+
+Drop this into a `docker-compose.yml` next to your project and run `docker compose up`:
+
+```yaml
+services:
+  entra-local:
+    image: ghcr.io/cmaneu/entra-local:latest
+    ports:
+      - '8443:8443'
+    volumes:
+      - entra-local-data:/app/data
+    # Optional: override any config key via the environment.
+    # environment:
+    #   PUBLIC_ORIGIN: https://entra.localtest.me:8443
+    #   TENANT_ID: 11111111-1111-1111-1111-111111111111
+    #   REQUIRE_PASSWORD: 'true'
+
+volumes:
+  entra-local-data:
+```
+
+> ⚠️ The container binds `0.0.0.0` for host port mapping. This is fine for an **isolated local
+> container**, but Entra Local is a dev tool with seeded secrets and an open admin API — never
+> publish it on an untrusted network or the public internet.
+
+> 🛠️ **Contributors** can build the image locally instead of pulling it:
+> `docker build -t entra-local .` (or `npm run docker:build && npm run docker:run`).
+
+### 2. From source (`npm start`)
 
 ```bash
 npm install      # install dependencies
@@ -120,43 +188,6 @@ npm start        # run the built server: node dist/index.js
 clear message if `dist/` or the portal bundle is missing). State (the SQLite DB at `DB_PATH`
 and the TLS cert/key under `TLS_CERT_DIR`) persists under `./data/` and survives restarts.
 For an auto-reloading dev loop instead, use `npm run dev`.
-
-### 2. Docker
-
-```bash
-docker build -t entra-local .
-docker run -p 8443:8443 -v entra-local-data:/app/data entra-local
-# equivalently: npm run docker:build && npm run docker:run
-```
-
-The image is a hardened multi-stage build (Node 24 base for the built-in `node:sqlite`
-driver), runs as a **non-root** user, and ships only the runtime (compiled server + prebuilt
-portal asset + production dependencies — no React/Vite/test toolchain). It declares a
-`HEALTHCHECK` that polls `/health` over TLS and a `VOLUME` at `/app/data`.
-
-- **Persistence:** mount a named volume at **`/app/data`** so the SQLite DB and the
-  auto-generated cert (stable fingerprint) survive `docker stop`/`docker start` and upgrades.
-- **Port mapping:** the container binds `HOST=0.0.0.0` internally (so the published port is
-  reachable from the host) while issuer/origin still default to `https://localhost:8443`. Map
-  it with `-p 8443:8443` (or `-p <hostPort>:8443`).
-- **Config passthrough:** every config key is read from the environment — for example:
-
-  ```bash
-  docker run -p 9000:9000 \
-    -e PORT=9000 \
-    -e TENANT_ID=11111111-1111-1111-1111-111111111111 \
-    -e REQUIRE_PASSWORD=true \
-    -v entra-local-data:/app/data entra-local
-  ```
-
-- **Fronted differently?** If clients reach the emulator at something other than
-  `https://localhost:8443` (a different host/port, or behind a proxy), set `PUBLIC_ORIGIN`
-  (and optionally `ISSUER`) so discovery/JWKS/token URLs and the token `iss` match what
-  clients actually use — e.g. `-e PUBLIC_ORIGIN=https://entra.localtest.me:8443`.
-
-> ⚠️ The container binds `0.0.0.0` for host port mapping. This is fine for an **isolated local
-> container**, but Entra Local is a dev tool with seeded secrets and an open admin API — never
-> publish it on an untrusted network or the public internet.
 
 ### 3. Single-file binary (Node SEA)
 
@@ -216,6 +247,10 @@ re-runs the full lint/typecheck/build/test gate and then publishes the distribut
   ```bash
   docker run -p 8443:8443 -v entra-local-data:/app/data ghcr.io/cmaneu/entra-local:latest
   ```
+
+The Release tag is stamped into the artifacts at build time, so the running build reports that
+exact version at `/health` — and the portal surfaces it in the top-bar health chip and the
+Dashboard "Version" card.
 
 ### Certificate trust
 
