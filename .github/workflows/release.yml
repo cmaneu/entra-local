@@ -1,0 +1,139 @@
+# Release (#1): when a GitHub Release is published, build & test the project, then publish the
+# distributable artifacts — the single-file executables (one per OS, attached to the Release) and
+# the Docker image (pushed to the GitHub Container Registry, part of GitHub Packages).
+name: Release
+
+on:
+  release:
+    types: [published]
+  # Manual dry-run: builds and (for a real tag) can re-publish. Upload/push steps are guarded to
+  # the `release` event so a dispatch run validates the build without needing an existing Release.
+  workflow_dispatch:
+
+# Least-privilege: write Release assets (binaries) and push packages (the GHCR image).
+permissions:
+  contents: write
+  packages: write
+
+env:
+  NODE_ENV: test
+  TENANT_ID: '11111111-1111-1111-1111-111111111111'
+
+jobs:
+  # Gate the release on the same lint/typecheck/build/test bar as CI before anything is published.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit + integration tests
+        run: npm test
+
+  # Build the self-contained single-file binary on each OS (Node SEA does not cross-compile),
+  # smoke-test it, and attach it to the published Release. Maps to feature #17's run target.
+  binaries:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            bin: entra-local
+            asset: entra-local-linux-x64
+          - os: windows-latest
+            bin: entra-local.exe
+            asset: entra-local-windows-x64.exe
+          - os: macos-latest
+            bin: entra-local
+            asset: entra-local-macos-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build server + portal
+        run: npm run build
+
+      - name: Build single-file executable (Node SEA)
+        run: npm run build:sea
+
+      - name: Smoke-test the binary
+        run: npx vitest run --config vitest.config.ts test/integration/sea-packaging.test.ts
+
+      # Rename to an OS-qualified asset name so the three platform binaries don't collide on the
+      # Release. `gh release upload` uses the repo's GITHUB_TOKEN — no third-party action needed.
+      - name: Stage binary as ${{ matrix.asset }} (POSIX)
+        if: runner.os != 'Windows'
+        run: cp "dist-sea/${{ matrix.bin }}" "dist-sea/${{ matrix.asset }}"
+
+      - name: Stage binary as ${{ matrix.asset }} (Windows)
+        if: runner.os == 'Windows'
+        run: Copy-Item "dist-sea/${{ matrix.bin }}" "dist-sea/${{ matrix.asset }}"
+        shell: pwsh
+
+      - name: Upload binary to the Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" "dist-sea/${{ matrix.asset }}" --clobber
+
+  # Build the hardened runtime image and push it to ghcr.io/<owner>/<repo> (GitHub Packages).
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive image name (lowercase) and version tag
+        id: meta
+        run: |
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          version="${{ github.event.release.tag_name }}"
+          version="${version#v}"
+          echo "version=${version:-dev}" >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        run: docker build -t entra-local:release .
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'release'
+        run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Tag and push image
+        if: github.event_name == 'release'
+        run: |
+          image="${{ steps.meta.outputs.image }}"
+          version="${{ steps.meta.outputs.version }}"
+          docker tag entra-local:release "$image:$version"
+          docker push "$image:$version"
+          # Only move `:latest` for a full (non-prerelease) Release.
+          if [ "${{ github.event.release.prerelease }}" != "true" ]; then
+            docker tag entra-local:release "$image:latest"
+            docker push "$image:latest"
+          fi
