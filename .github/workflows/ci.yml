@@ -14,13 +14,15 @@ jobs:
       TENANT_ID: '11111111-1111-1111-1111-111111111111'
     strategy:
       matrix:
-        # Node 24 is the primary target; 22.5 asserts the node:sqlite floor (#2).
-        node-version: ['24', '22.5']
+        # Node 24 is the primary target; 22.13 asserts the node:sqlite floor (#2) — the first
+        # release where the built-in `node:sqlite` module is available without the
+        # `--experimental-sqlite` flag (added flagged in 22.5, unflagged in 22.13).
+        node-version: ['24', '22.13']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -79,7 +81,7 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build image
         run: docker build -t entra-local:ci .
