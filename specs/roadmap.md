@@ -62,8 +62,8 @@ minimal Graph endpoints. Runs via `npm start` and Docker.
 | 10 | Minimal Microsoft Graph | Read `/me`, `/users`, `/groups` — proves the access-token mint→consume loop | – | 2, 5 | ✅ |
 | 11 | Admin REST API | CRUD for users, groups, apps, secrets, scopes/roles; seed/reset | – | 2 | ✅ |
 | 12 | Web portal | Dashboard, users, groups, app registrations, per-app MSAL config snippet | ✓ | 11 | ✅ |
-| 13 | MSAL compatibility validation | Real-MSAL e2e for `msal-browser` & `msal-node` (sign-in / silent-refresh / sign-out) **plus** an authority/instance-discovery smoke-test for **MSAL.NET and MSAL Python**; provisions .NET + Python runtimes in CI; documents `protocolMode`/`knownAuthorities` per platform | – | 6, 7, 9 | ⬜ |
-| 14 | Run targets: `npm start` + Docker | Runnable from source and as a container with persisted volume | – | 1 | ⬜ |
+| 13 | MSAL compatibility validation | Real-MSAL e2e for `msal-browser` & `msal-node` (sign-in / silent-refresh / sign-out) **plus** an authority/instance-discovery smoke-test for **MSAL.NET and MSAL Python**; provisions .NET + Python runtimes in CI; documents `protocolMode`/`knownAuthorities` per platform | – | 6, 7, 9 | ✅ |
+| 14 | Run targets: `npm start` + Docker | Runnable from source and as a container with persisted volume | – | 1 | ✅ |
 
 ## Iteration 2
 **Outcome:** complete the remaining flow, realism options, and zero-install distribution —
@@ -73,7 +73,7 @@ reaching the full v1.0 acceptance bar in [`global-spec.md` §15](global-spec.md#
 |---|---------|-------------|----|--------------|--------|
 | 15 | Device Code flow | `/devicecode` + user-code approval page (RFC 8628) for CLI/device apps | ✓ | 5, 6 | ⬜ |
 | 16 | Optional password login enforcement | `REQUIRE_PASSWORD` username+password login instead of account picker | ✓ | 6 | ⬜ |
-| 17 | Single-executable packaging | Self-contained binary bundling runtime, portal assets, migrations | – | 14 | ⬜ |
+| 17 | Single-executable packaging | Self-contained binary bundling runtime, portal assets, migrations | – | 14 | ✅ |
 
 ## Iteration 3 — Sample applications
 **Outcome:** minimal, runnable MSAL sample apps across the major platforms that authenticate

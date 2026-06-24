@@ -1,17 +1,19 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { readTextAsset } from '../runtime/assets.js';
 import { isReservedApiPath } from './pathmap.js';
 import { sendJsonNotFound } from './errors.js';
-
-// Resolves to <repo>/portal/dist/index.html from both src/http (tsx) and dist/http (built).
-const PLACEHOLDER_PATH = fileURLToPath(new URL('../../portal/dist/index.html', import.meta.url));
 
 let cachedHtml: string | undefined;
 
 function loadPlaceholder(): string {
   if (cachedHtml === undefined) {
-    cachedHtml = readFileSync(PLACEHOLDER_PATH, 'utf8');
+    // Resolves to <repo>/portal/dist/index.html from src/http (tsx) and dist/http (built); inside
+    // a Node SEA single executable (#17) the same HTML is read from the embedded
+    // `portal-index-html` asset instead.
+    cachedHtml = readTextAsset(
+      'portal-index-html',
+      () => new URL('../../portal/dist/index.html', import.meta.url),
+    );
   }
   return cachedHtml;
 }

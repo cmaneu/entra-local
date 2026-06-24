@@ -1,0 +1,44 @@
+# Keep the Docker build context lean and prevent host artifacts from leaking into the image.
+# The build stage runs `npm ci` + `npm run build` from source, so only source + build inputs
+# are needed; everything below is regenerated, irrelevant, or must never be baked in.
+
+# Dependencies + build output (reinstalled / rebuilt inside the image).
+node_modules/
+dist/
+*.tsbuildinfo
+portal/dist/
+
+# Single-executable (Node SEA) build artifacts (#17) — never part of the image.
+dist-sea/
+*.blob
+*.exe
+
+# Runtime state — DB + persisted TLS cert (belongs in the mounted volume, never the image).
+data/
+
+# VCS, CI, and project metadata not needed to build the app.
+.git/
+.gitignore
+.github/
+.dockerignore
+Dockerfile
+
+# Docs / specs / project memory (not build inputs).
+*.md
+specs/
+memory/
+brand/
+
+# Local config / secrets (never bake real secrets into the image).
+entra-local.config.json
+.env
+.env.local
+
+# Cross-platform MSAL compat smoke-tests (#13) — .NET/Python projects, never part of the image.
+test/compat/
+
+# Test artifacts + editor/OS cruft.
+coverage/
+.DS_Store
+.vscode/
+.idea/

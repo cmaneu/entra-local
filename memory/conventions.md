@@ -48,3 +48,28 @@ Conventional Commits (`feat:`, `fix:`, `docs:`, `test:`, `chore:`). Append the t
 
 ### Determinism & secrets
 Default tenant ID `11111111-1111-1111-1111-111111111111`; seed data uses fixed GUIDs. This is a development tool — never commit real secrets; seeded/known secrets are intentional and dev-only.
+
+### Cross-platform MSAL compatibility (#13)
+The MSAL client configuration for every platform is documented in `docs/msal-client-config.md`
+(the canonical reference for samples #18–#22): authority = the concrete-GUID `<origin>/<tenantId>`,
+instance discovery **disabled**, authority marked known/unvalidated, JWKS verified from `n`/`e`/`kid`
+(no `x5c`). MSAL.NET and MSAL Python are validated by self-contained smoke-tests under `test/compat/`
+(`dotnet/`, `python/smoke.py`) that perform a real client-credentials token acquisition and validate
+the JWT; they are spawned as child processes by `test/e2e/msal-compat.e2e.ts` and **skip cleanly**
+when their runtime/MSAL package is unavailable (never fail the suite). CI (`actions/setup-dotnet` +
+`actions/setup-python` + `pip install msal pyjwt cryptography requests`) provisions both so they run
+for real. `test/compat/` is excluded from the Docker image and its build artifacts are gitignored.
+
+### Runtime asset access (#17)
+The server reads exactly two non-code assets at runtime — the single-file portal
+(`portal/dist/index.html`) and `package.json` (for the `/health` version). Always read them
+through `src/runtime/assets.ts` (`readTextAsset(seaKey, () => new URL('…', import.meta.url))`),
+never with a direct `readFileSync`/`fileURLToPath` at the call site. This keeps the normal run
+targets (tsx/dev, `dist`, Docker) on their filesystem reads while the single-executable (Node
+SEA) build transparently serves the same bytes from the embedded SEA blob. The URL must be
+passed as a **lazy thunk** (esbuild empties `import.meta.url` in the CJS/SEA bundle, so eager
+`new URL(..., import.meta.url)` would throw). New runtime-read assets must be added to BOTH the
+`assets` map in `sea-config.json` and the relevant `readTextAsset` call. SEA outputs
+(`dist-sea/`, `*.exe`, `*.blob`) are git/docker/prettier-ignored and never part of the Docker
+image; `esbuild`/`postject` stay in devDependencies. Build per OS (`npm run build:sea`) — SEA
+does not cross-compile; the dev binary is unsigned.

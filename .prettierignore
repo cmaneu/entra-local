@@ -1,4 +1,5 @@
 dist/
+dist-sea/
 node_modules/
 coverage/
 data/
@@ -12,3 +13,4 @@ brand/
 .github/
 samples/
 docs/
+test/compat/

@@ -5,6 +5,11 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Single-executable (Node SEA) build artifacts (#17)
+dist-sea/
+*.blob
+*.exe
+
 # Runtime data (SQLite DB + persisted TLS cert)
 data/
 
@@ -19,6 +24,12 @@ entra-local.config.json
 
 # Test artifacts
 coverage/
+
+# Cross-platform MSAL compat smoke-test build artifacts (#13)
+test/compat/dotnet/bin/
+test/compat/dotnet/obj/
+test/compat/python/.venv/
+**/__pycache__/
 
 # Editor / OS
 .DS_Store

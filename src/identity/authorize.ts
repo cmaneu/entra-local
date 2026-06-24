@@ -31,6 +31,51 @@ const SESSION_COOKIE = 'el_session';
 /** Interactive session lifetime (seconds) — 8h; backs both the cookie Max-Age and the row TTL. */
 const SESSION_LIFETIME_SECONDS = 8 * 60 * 60;
 
+/** Cookie tracking UPNs already used to sign in on this device (UX hint for the many-users picker). */
+const RECENT_COOKIE = 'el_recent';
+/** Cap on remembered recent accounts. */
+const RECENT_MAX = 8;
+/** Recent-accounts cookie lifetime (30 days). */
+const RECENT_COOKIE_MAX_AGE = 30 * 24 * 60 * 60;
+
+/** Read the device's previously-used UPNs from the recent cookie (most-recent first). */
+function readRecentUpns(request: FastifyRequest): string[] {
+  const raw = request.cookies[RECENT_COOKIE];
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((v): v is string => typeof v === 'string').slice(0, RECENT_MAX);
+    }
+  } catch {
+    /* malformed cookie — ignore */
+  }
+  return [];
+}
+
+/** Record a successfully-used UPN at the front of the recent cookie (deduped, capped). */
+function rememberRecentUpn(request: FastifyRequest, reply: FastifyReply, upn: string): void {
+  const current = readRecentUpns(request);
+  const next = [upn, ...current.filter((u) => u.toLowerCase() !== upn.toLowerCase())].slice(
+    0,
+    RECENT_MAX,
+  );
+  void reply.setCookie(RECENT_COOKIE, JSON.stringify(next), {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: RECENT_COOKIE_MAX_AGE,
+  });
+}
+
+/** Resolve an enabled user by UPN, case-insensitively, within the configured tenant. */
+function resolveUserByEmail(store: Store, email: string): User | undefined {
+  const exact = store.users.getByUpn(email);
+  if (exact) return exact;
+  const lower = email.toLowerCase();
+  return store.users.list({ top: 1000 }).find((u) => u.userPrincipalName.toLowerCase() === lower);
+}
+
 /** OIDC/grant scopes that are not resource permissions. */
 const OIDC_SCOPES = new Set(['openid', 'profile', 'email', 'offline_access']);
 
@@ -344,6 +389,7 @@ function resolveSession(request: FastifyRequest, store: Store): User | undefined
 
 /** Render the appropriate sign-in surface (account-picker or password form) for a validated req. */
 function renderSignIn(
+  request: FastifyRequest,
   reply: FastifyReply,
   ctx: AuthorizeContext,
   tenant: string,
@@ -378,6 +424,7 @@ function renderSignIn(
     renderAccountPicker({
       ...shared,
       users: store_enabledUsers(ctx.store),
+      recentUpns: readRecentUpns(request),
       loginHint: v.loginHint ?? null,
       error: opts.error ?? null,
     }),
@@ -442,7 +489,7 @@ function handleInitialAuthorize(
     return;
   }
 
-  renderSignIn(reply, ctx, tenant, v);
+  renderSignIn(request, reply, ctx, tenant, v);
 }
 
 /** Handle the interactive sign-in submission (POST carrying the signed `__el_state` field). */
@@ -499,7 +546,7 @@ function handleSignInSubmit(
       !candidate.accountEnabled ||
       !ctx.store.users.verifyPassword(candidate.id, password)
     ) {
-      renderSignIn(reply, ctx, tenant, v, {
+      renderSignIn(request, reply, ctx, tenant, v, {
         error: 'That username or password is incorrect. Please try again.',
         username,
       });
@@ -507,10 +554,17 @@ function handleSignInSubmit(
     }
     user = candidate;
   } else {
+    // The picker posts a selected account id (`__el_user`); the many-users view posts a typed
+    // account email (`__el_email`) instead. Prefer the explicit id when both are present.
     const userId = getParam(body, SIGNIN_FIELDS.user) ?? '';
-    const candidate = ctx.store.users.getById(userId);
+    const email = (getParam(body, SIGNIN_FIELDS.email) ?? '').trim();
+    const candidate = userId
+      ? ctx.store.users.getById(userId)
+      : email
+        ? resolveUserByEmail(ctx.store, email)
+        : undefined;
     if (!candidate || !candidate.accountEnabled || candidate.tenantId !== ctx.config.tenantId) {
-      renderSignIn(reply, ctx, tenant, v, {
+      renderSignIn(request, reply, ctx, tenant, v, {
         error: 'That account is not available. Please choose another account.',
       });
       return;
@@ -531,6 +585,10 @@ function handleSignInSubmit(
     secure: ctx.config.tls.enabled,
     maxAge: SESSION_LIFETIME_SECONDS,
   });
+
+  // Remember this account on the device so the many-users picker can surface it next time.
+  // Set after the session cookie so the session cookie stays the primary `Set-Cookie`.
+  rememberRecentUpn(request, reply, user.userPrincipalName);
 
   issueCodeAndRedirect(reply, ctx, v, user);
 }

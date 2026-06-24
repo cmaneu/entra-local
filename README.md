@@ -54,24 +54,122 @@ the same protocols, so your MSAL-based app works against it with only configurat
   └───────────────┘
 ```
 
-## Quick start
+## Running the emulator
 
-> Status: **specification phase.** The implementation is being built against
-> [`specs/global-spec.md`](specs/global-spec.md). The commands below are the intended
-> developer experience.
+Entra Local runs two ways with **identical behavior and one config/data model** — the only
+difference is where the persisted `data/` directory lives (host working directory vs. a Docker
+volume). Both serve HTTPS on `8443` by default, auto-generate and persist a self-signed
+certificate, and seed a deterministic directory on first boot.
+
+### 1. From source (`npm start`)
 
 ```bash
-# From source
-npm install
-npm start
-# Portal:    https://localhost:8443/admin
+npm install      # install dependencies
+npm run build    # compile the server (dist/) + build the admin portal (single-file)
+npm start        # run the built server: node dist/index.js
+# Portal:    https://localhost:8443/
+# Health:    https://localhost:8443/health        -> {"status":"ok", ...}
 # Discovery: https://localhost:8443/{tenantId}/v2.0/.well-known/openid-configuration
 ```
 
+`npm start` runs the **built** server, so run `npm run build` first (a guard aborts with a
+clear message if `dist/` or the portal bundle is missing). State (the SQLite DB at `DB_PATH`
+and the TLS cert/key under `TLS_CERT_DIR`) persists under `./data/` and survives restarts.
+For an auto-reloading dev loop instead, use `npm run dev`.
+
+### 2. Docker
+
 ```bash
-# Docker (intended)
-docker run -p 8443:8443 -v entra-local-data:/data entra-local
+docker build -t entra-local .
+docker run -p 8443:8443 -v entra-local-data:/app/data entra-local
+# equivalently: npm run docker:build && npm run docker:run
 ```
+
+The image is a hardened multi-stage build (Node 24 base for the built-in `node:sqlite`
+driver), runs as a **non-root** user, and ships only the runtime (compiled server + prebuilt
+portal asset + production dependencies — no React/Vite/test toolchain). It declares a
+`HEALTHCHECK` that polls `/health` over TLS and a `VOLUME` at `/app/data`.
+
+- **Persistence:** mount a named volume at **`/app/data`** so the SQLite DB and the
+  auto-generated cert (stable fingerprint) survive `docker stop`/`docker start` and upgrades.
+- **Port mapping:** the container binds `HOST=0.0.0.0` internally (so the published port is
+  reachable from the host) while issuer/origin still default to `https://localhost:8443`. Map
+  it with `-p 8443:8443` (or `-p <hostPort>:8443`).
+- **Config passthrough:** every config key is read from the environment — for example:
+
+  ```bash
+  docker run -p 9000:9000 \
+    -e PORT=9000 \
+    -e TENANT_ID=11111111-1111-1111-1111-111111111111 \
+    -e REQUIRE_PASSWORD=true \
+    -v entra-local-data:/app/data entra-local
+  ```
+
+- **Fronted differently?** If clients reach the emulator at something other than
+  `https://localhost:8443` (a different host/port, or behind a proxy), set `PUBLIC_ORIGIN`
+  (and optionally `ISSUER`) so discovery/JWKS/token URLs and the token `iss` match what
+  clients actually use — e.g. `-e PUBLIC_ORIGIN=https://entra.localtest.me:8443`.
+
+> ⚠️ The container binds `0.0.0.0` for host port mapping. This is fine for an **isolated local
+> container**, but Entra Local is a dev tool with seeded secrets and an open admin API — never
+> publish it on an untrusted network or the public internet.
+
+### 3. Single-file binary (Node SEA)
+
+Build a **self-contained native executable** that boots the full emulator with **no Node
+install, no `npm install`, and no external files** — the compiled server, all production
+dependencies, the admin portal, and the version metadata are bundled/embedded into one binary
+(built with [Node Single Executable Applications](https://nodejs.org/api/single-executable-applications.html)).
+Persistence uses the built-in `node:sqlite`, so there are **no native bindings** to ship.
+
+```bash
+npm run build       # compile the server + the single-file portal (prerequisite)
+npm run build:sea   # bundle (esbuild) -> embed assets -> inject the SEA blob (postject)
+# -> dist-sea/entra-local       (Linux/macOS)
+# -> dist-sea/entra-local.exe   (Windows)
+```
+
+Run it like any other binary; it reads the **same** env/config keys as `npm start` and writes
+the **same** `data/` layout (SQLite DB + auto-generated TLS cert) relative to its working
+directory:
+
+```bash
+# Linux/macOS
+./dist-sea/entra-local
+# Windows (PowerShell)
+.\dist-sea\entra-local.exe
+# override config via env, e.g.:
+#   PORT=9000 TENANT_ID=11111111-1111-1111-1111-111111111111 ./dist-sea/entra-local
+```
+
+- **Data & cert:** like the other targets, the binary creates `./data/entra-local.db` and a
+  persisted self-signed cert under `./data/tls/` on first run (override with `DB_PATH` /
+  `TLS_CERT_DIR`).
+- **Supported platforms:** Windows, Linux, and macOS (x64/arm64). SEA does **not**
+  cross-compile — build the binary **on the OS you intend to run it on**. The binary embeds the
+  Node runtime used to build it (must be **≥ 22.5** for `node:sqlite`).
+- **Unsigned (dev only):** the produced binary is **not code-signed**, so Windows SmartScreen /
+  macOS Gatekeeper may warn on first run (and `postject` prints a benign
+  "signature seems corrupted" notice on Windows because it invalidates Node's original
+  signature). This is a developer tool — do not redistribute the unsigned binary as a trusted
+  release.
+- **Smoke-test it:** `npm run test:sea` builds the binary and runs an automated check that it
+  boots over HTTPS, serves `/health` (with the embedded version), the portal at `/`, and OIDC
+  discovery. The same test also runs (gated on the binary existing) in `npm test`.
+
+### Certificate trust
+
+The emulator serves HTTPS with an auto-generated, persisted **self-signed** certificate
+(CN=`localhost`, SANs for `localhost`/`127.0.0.1`/`::1`), so clients must trust it or relax
+verification **in dev only**:
+
+- **Trust it (recommended):** import the cert into your OS/browser trust store. From source it
+  is `./data/tls/cert.pem`; from a container, copy it out with
+  `docker cp <container>:/app/data/tls/cert.pem ./cert.pem`.
+- **Bypass it (dev only):** point your client's CA at that `cert.pem`, or set
+  `NODE_TLS_REJECT_UNAUTHORIZED=0` for a Node client / `curl --insecure` for quick checks.
+  Never disable verification for anything but local development.
+- **Bring your own cert:** set `TLS_CERT` + `TLS_KEY` to use a custom pair (both or neither).
 
 ### Point MSAL at the emulator
 

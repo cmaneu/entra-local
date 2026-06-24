@@ -240,6 +240,29 @@ describe('account picker (criterion 2)', () => {
     expect(res.body).toContain('Local Emulator');
   });
 
+  it('renders the security callout and the 45° "not secure" background watermark', async () => {
+    ctx = await buildTestApp();
+    const res = await ctx.inject({
+      method: 'GET',
+      url: authorizeUrl({
+        client_id: SPA,
+        response_type: 'code',
+        redirect_uri: REDIRECT,
+        scope: `openid ${SPA_SCOPE}`,
+        code_challenge: s256('verifier'),
+        code_challenge_method: 'S256',
+      }),
+    });
+    expect(res.statusCode).toBe(200);
+    // Callout above "Sign in" warning users not to enter real secrets.
+    expect(res.body).toContain('test authentication system');
+    expect(res.body).toMatch(/Never enter a real password/i);
+    // Mesh gradient + repeating 45°-rotated "not secure" watermark in the background.
+    expect(res.body).toContain('radial-gradient');
+    expect(res.body).toContain('rotate(-45');
+    expect(res.body).toContain('NOT%20SECURE');
+  });
+
   it('selecting a user issues a code and 302s to redirect_uri with the echoed state', async () => {
     ctx = await buildTestApp();
     const result = await signInAndGetCode(ctx, {
@@ -277,6 +300,93 @@ describe('account picker (criterion 2)', () => {
     expect(url.hash).toContain('code=');
     expect(url.hash).toContain('state=frag');
     expect(url.search).toBe('');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Many-users picker — recently-used accounts + email textbox (> 3 enabled users)
+// ---------------------------------------------------------------------------
+describe('account picker with many users (recent accounts + email box)', () => {
+  /** Seed three extra enabled users so the tenant has > 3 (collapsing the full list). */
+  function seedExtraUsers(app: TestApp): void {
+    for (const n of ['carol', 'dave', 'erin']) {
+      app.app.store.users.create({
+        tenantId: T,
+        userPrincipalName: `${n}@entralocal.dev`,
+        displayName: `${n[0]!.toUpperCase()}${n.slice(1)} Example`,
+        accountEnabled: true,
+      });
+    }
+  }
+
+  function pickerPage(app: TestApp, cookie?: string) {
+    return app.inject({
+      method: 'GET',
+      url: authorizeUrl({
+        client_id: SPA,
+        response_type: 'code',
+        redirect_uri: REDIRECT,
+        scope: `openid ${SPA_SCOPE}`,
+        code_challenge: s256('verifier'),
+        code_challenge_method: 'S256',
+      }),
+      ...(cookie ? { headers: { cookie } } : {}),
+    });
+  }
+
+  it('with no recent accounts, shows only an email textbox (no per-account buttons)', async () => {
+    ctx = await buildTestApp();
+    seedExtraUsers(ctx);
+    const res = await pickerPage(ctx);
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('name="__el_email"');
+    // The full account list is collapsed: no per-account submit buttons are rendered.
+    expect(res.body).not.toContain('name="__el_user"');
+  });
+
+  it('email textbox resolves the account, issues a code, and remembers it for next time', async () => {
+    ctx = await buildTestApp();
+    seedExtraUsers(ctx);
+    const page = await pickerPage(ctx);
+    const signedState = extractSignedState(page.body);
+
+    const submit = await ctx.inject({
+      method: 'POST',
+      url: AUTHORIZE_PATH,
+      headers: FORM_HEADERS,
+      payload: form({ __el_state: signedState, __el_email: 'carol@entralocal.dev' }),
+    });
+    expect(submit.statusCode).toBe(302);
+    expect(new URL(submit.headers.location as string).searchParams.get('code')).toMatch(/.+/);
+
+    const setCookies = submit.headers['set-cookie'];
+    const cookieList = Array.isArray(setCookies) ? setCookies : [setCookies ?? ''];
+    const recent = cookieList.find((c) => c.startsWith('el_recent='));
+    expect(recent, 'el_recent cookie should be set').toBeDefined();
+    const recentCookie = recent!.split(';')[0]!;
+
+    // A second visit now surfaces carol as a recently-used account, but still not the others.
+    const back = await pickerPage(ctx, recentCookie);
+    expect(back.body).toContain('Recently used');
+    expect(back.body).toContain('carol@entralocal.dev');
+    expect(back.body).toContain('name="__el_user"');
+    expect(back.body).toContain('name="__el_email"');
+    expect(back.body).not.toContain('dave@entralocal.dev');
+  });
+
+  it('an unknown email re-renders the picker with an error', async () => {
+    ctx = await buildTestApp();
+    seedExtraUsers(ctx);
+    const page = await pickerPage(ctx);
+    const signedState = extractSignedState(page.body);
+    const submit = await ctx.inject({
+      method: 'POST',
+      url: AUTHORIZE_PATH,
+      headers: FORM_HEADERS,
+      payload: form({ __el_state: signedState, __el_email: 'nobody@entralocal.dev' }),
+    });
+    expect(submit.statusCode).toBe(200);
+    expect(submit.body).toContain('That account is not available');
   });
 });
 

@@ -8,6 +8,7 @@ export default tseslint.config(
   {
     ignores: [
       'dist/**',
+      'dist-sea/**',
       'node_modules/**',
       'portal/dist/**',
       'data/**',
@@ -15,6 +16,9 @@ export default tseslint.config(
       'samples/**',
       'docs/**',
       'scripts/**',
+      // Cross-platform MSAL compat smoke-tests (#13): C#/Python projects + their build artifacts
+      // (.venv, bin/, obj/) are not part of the TS lint surface.
+      'test/compat/**',
     ],
   },
   eslint.configs.recommended,

@@ -19,11 +19,16 @@ export const SIGNIN_FIELDS = {
   state: '__el_state',
   /** Account-picker: the selected user's object id. */
   user: '__el_user',
+  /** Account-picker (many-users mode): the typed account email / UPN. */
+  email: '__el_email',
   /** Password mode: the typed user principal name. */
   username: '__el_username',
   /** Password mode: the typed password. */
   password: '__el_password',
 } as const;
+
+/** Above this many enabled users, the picker collapses to recently-used accounts + an email box. */
+export const MANY_USERS_THRESHOLD = 3;
 
 /** Escape a string for safe interpolation into HTML text / double-quoted attributes. */
 export function escapeHtml(value: string): string {
@@ -51,10 +56,28 @@ function avatarColor(userId: string): string {
   return AVATAR_COLORS[h % AVATAR_COLORS.length]!;
 }
 
+/**
+ * Repeating 45°-angled "not secure" watermark, authored as a self-contained SVG tile (no external
+ * assets) and URL-encoded into a CSS `data:` background. Tiled across the page background behind the
+ * sign-in card so the sandbox nature is unmistakable in every screenshot.
+ */
+const WATERMARK_MESSAGE = 'NOT SECURE · TEST ONLY · DO NOT ENTER REAL PASSWORDS';
+const WATERMARK_TILE =
+  `<svg xmlns="http://www.w3.org/2000/svg" width="620" height="420" viewBox="0 0 620 420">` +
+  `<g fill="#FFFFFF" fill-opacity="0.14" font-family="Segoe UI, Selawik, system-ui, sans-serif" ` +
+  `font-size="22" font-weight="700" letter-spacing="2">` +
+  `<text x="-40" y="120" transform="rotate(-45 310 110)">${WATERMARK_MESSAGE}</text>` +
+  `<text x="-40" y="260" transform="rotate(-45 310 250)">${WATERMARK_MESSAGE}</text>` +
+  `<text x="-40" y="400" transform="rotate(-45 310 390)">${WATERMARK_MESSAGE}</text>` +
+  `</g></svg>`;
+const WATERMARK_URI = `data:image/svg+xml,${encodeURIComponent(WATERMARK_TILE)}`;
+
 const SHARED_STYLE = `
   :root{
-    --primary-40:#005A9E;--primary-50:#106EBE;--primary-60:#0078D4;
-    --accent-60:#038387;--caution-50:#F59E0B;--caution-80:#92400E;
+    --primary-30:#004578;--primary-40:#005A9E;--primary-50:#106EBE;--primary-60:#0078D4;
+    --primary-90:#DEECF9;
+    --accent-40:#015A5D;--accent-60:#038387;--caution-50:#F59E0B;--caution-80:#92400E;
+    --caution-90:#FEF3C7;
     --neutral-10:#201F1E;--neutral-20:#323130;--neutral-40:#605E5C;--neutral-60:#8A8886;
     --neutral-80:#E1DFDD;--neutral-85:#EDEBE9;--neutral-95:#FAF9F8;--neutral-100:#FFFFFF;
     --error-60:#D13438;--error-80:#A4262C;--error-90:#FDE7E9;
@@ -63,13 +86,24 @@ const SHARED_STYLE = `
     --font-mono:"Cascadia Mono","Cascadia Code",ui-monospace,Consolas,monospace;
     --r-md:4px;--r-lg:8px;
     --depth-8:0 1.6px 3.6px rgba(0,0,0,.13),0 0.3px 0.9px rgba(0,0,0,.11);
+    --depth-16:0 6.4px 14.4px rgba(0,0,0,.18),0 1.2px 3.6px rgba(0,0,0,.11);
   }
   *{box-sizing:border-box;}
-  body{font-family:var(--font-ui);color:var(--on-surface);background:var(--surface-alt);
-       min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;margin:0;}
+  body{font-family:var(--font-ui);color:var(--on-surface);
+       min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;margin:0;
+       background-color:var(--primary-60);
+       background-image:
+         url("${WATERMARK_URI}"),
+         radial-gradient(at 14% 18%, var(--primary-50) 0px, transparent 50%),
+         radial-gradient(at 84% 12%, var(--accent-60) 0px, transparent 48%),
+         radial-gradient(at 78% 82%, var(--primary-40) 0px, transparent 52%),
+         radial-gradient(at 18% 86%, var(--accent-40) 0px, transparent 48%),
+         radial-gradient(at 50% 50%, var(--primary-30) 0px, transparent 60%);
+       background-repeat:repeat,no-repeat,no-repeat,no-repeat,no-repeat,no-repeat;
+       background-attachment:fixed;}
   .mono{font-family:var(--font-mono);}
   .card{background:var(--surface);width:440px;max-width:100%;border-radius:var(--r-lg);
-        box-shadow:var(--depth-8);padding:44px;}
+        box-shadow:var(--depth-16);padding:44px;position:relative;z-index:1;}
   .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
   .app{display:flex;align-items:center;gap:8px;}
   .applogo{width:28px;height:28px;border-radius:var(--r-md);background:var(--primary-60);color:#fff;
@@ -78,6 +112,12 @@ const SHARED_STYLE = `
   .badge{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
          background:var(--caution-50);color:var(--neutral-10);border-radius:var(--r-md);
          padding:3px 8px;display:inline-flex;gap:5px;align-items:center;}
+  .callout{display:flex;gap:10px;align-items:flex-start;background:var(--caution-90);
+           border:1px solid var(--caution-50);border-radius:var(--r-md);
+           padding:12px 14px;margin:0 0 20px;}
+  .callout .ico{flex:none;font-size:16px;line-height:1.3;}
+  .callout p{margin:0;font-size:12.5px;line-height:1.45;color:var(--caution-80);}
+  .callout strong{color:var(--caution-80);}
   h1{font-size:28px;font-weight:600;letter-spacing:-.01em;margin:0 0 4px;}
   .sub{font-size:14px;margin:0 0 20px;color:var(--neutral-40);}
   .acct{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 8px;
@@ -88,9 +128,12 @@ const SHARED_STYLE = `
           justify-content:center;color:#fff;font-size:13px;font-weight:600;flex:none;}
   .name{font-size:14px;font-weight:600;color:var(--neutral-10);display:block;}
   .upn{font-size:12px;color:var(--neutral-40);}
+  .pickhint{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+            color:var(--neutral-60);margin:0 0 6px;}
+  .otheracct{margin-top:8px;}
   label{display:block;font-size:14px;font-weight:600;color:var(--neutral-20);margin:0 0 6px;}
-  input[type=text],input[type=password]{width:100%;height:36px;padding:0 10px;font-size:14px;
-        font-family:inherit;border:1px solid var(--neutral-60);border-radius:var(--r-md);
+  input[type=text],input[type=email],input[type=password]{width:100%;height:36px;padding:0 10px;
+        font-size:14px;font-family:inherit;border:1px solid var(--neutral-60);border-radius:var(--r-md);
         background:var(--surface);margin-bottom:16px;}
   input:focus{outline:2px solid var(--primary-60);outline-offset:0;border-color:var(--primary-60);}
   button.primary{height:32px;padding:0 20px;border:none;border-radius:var(--r-md);
@@ -107,6 +150,18 @@ const SHARED_STYLE = `
   .foot .meta{font-size:11px;color:var(--neutral-60);margin-top:8px;}
   .divider{height:1px;background:var(--neutral-85);margin:6px 0;}
 `;
+
+/**
+ * Persistent security callout shown above every "Sign in" heading: tells end users this is a test
+ * authentication system and that they must never enter a real password or secret.
+ */
+function securityCallout(): string {
+  return `<div class="callout" role="note">
+    <span class="ico" aria-hidden="true">⚠️</span>
+    <p><strong>This is a test authentication system.</strong> Accounts here are fake and traffic is
+       not secure. Never enter a real password, secret, or any credential you use anywhere else.</p>
+  </div>`;
+}
 
 /** Common page shell (doctype, head, badge header). */
 function page(
@@ -164,34 +219,64 @@ export interface SignInPageOptions {
 export interface AccountPickerOptions extends SignInPageOptions {
   /** Enabled users to list. */
   users: readonly User[];
+  /** UPNs previously used to sign in on this device (most-recent first); drives the many-users view. */
+  recentUpns?: readonly string[];
   /** Optional login_hint UPN to visually pre-select. */
   loginHint?: string | null;
   /** Optional error banner (e.g. disabled/unknown account). */
   error?: string | null;
 }
 
-/** Render the passwordless account-picker page (default sign-in UX). */
-export function renderAccountPicker(options: AccountPickerOptions): string {
-  const accounts = options.users
-    .map((u) => {
-      const selected = options.loginHint && u.userPrincipalName === options.loginHint;
-      return `<button class="acct" type="submit" name="${SIGNIN_FIELDS.user}" value="${escapeHtml(u.id)}"${
-        selected ? ' autofocus aria-current="true"' : ''
-      }>
+/** Render a single account as a picker submit button (posts `__el_user`). */
+function accountButton(u: User, loginHint?: string | null): string {
+  const selected = loginHint && u.userPrincipalName === loginHint;
+  return `<button class="acct" type="submit" name="${SIGNIN_FIELDS.user}" value="${escapeHtml(u.id)}"${
+    selected ? ' autofocus aria-current="true"' : ''
+  }>
         <span class="avatar" style="background:${avatarColor(u.id)}" aria-hidden="true">${escapeHtml(initials(u.displayName))}</span>
         <span><span class="name">${escapeHtml(u.displayName)}</span><span class="upn">${escapeHtml(u.userPrincipalName)}</span></span>
       </button>`;
-    })
-    .join('\n');
+}
 
-  const body = `<h1>Sign in</h1>
+/** Render the passwordless account-picker page (default sign-in UX). */
+export function renderAccountPicker(options: AccountPickerOptions): string {
+  const manyUsers = options.users.length > MANY_USERS_THRESHOLD;
+
+  let inner: string;
+  if (manyUsers) {
+    // Too many accounts to list them all: show only the ones already used on this device, plus a
+    // free-text email box to sign in as any account (mirrors the real Entra "use another account").
+    const recent = new Set((options.recentUpns ?? []).map((u) => u.toLowerCase()));
+    const recentUsers = options.users.filter((u) => recent.has(u.userPrincipalName.toLowerCase()));
+    const recentList =
+      recentUsers.length > 0
+        ? `<p class="pickhint">Recently used</p>
+      <div role="list" aria-label="Recently used accounts">
+        ${recentUsers.map((u) => accountButton(u, options.loginHint)).join('\n')}
+      </div>
+      <div class="divider"></div>`
+        : '';
+    inner = `${recentList}
+    <div class="otheracct">
+      <label for="el-email">${recentUsers.length > 0 ? 'Use another account' : 'Email'}</label>
+      <input id="el-email" type="email" name="${SIGNIN_FIELDS.email}" autocomplete="username"
+             inputmode="email" placeholder="user@entralocal.dev"
+             value="${escapeHtml(options.loginHint ?? '')}"${recentUsers.length === 0 ? ' autofocus' : ''} />
+      <button class="primary" type="submit">Sign in</button>
+    </div>`;
+  } else {
+    inner = `<div role="list" aria-label="Pick an account">
+      ${options.users.map((u) => accountButton(u, options.loginHint)).join('\n')}
+    </div>`;
+  }
+
+  const body = `${securityCallout()}
+  <h1>Sign in</h1>
   <p class="sub">to continue to <span class="mono" style="font-size:13px">${escapeHtml(options.continueTo)}</span></p>
   ${options.error ? `<div class="err" role="alert">${escapeHtml(options.error)}</div>` : ''}
   <form method="post" action="${escapeHtml(options.actionPath)}">
     <input type="hidden" name="${SIGNIN_FIELDS.state}" value="${escapeHtml(options.signedState)}" />
-    <div role="list" aria-label="Pick an account">
-      ${accounts}
-    </div>
+    ${inner}
   </form>
   ${footer(options.tenantId, options.issuer)}`;
 
@@ -207,7 +292,8 @@ export interface PasswordFormOptions extends SignInPageOptions {
 
 /** Render the username + password sign-in form (`REQUIRE_PASSWORD=true`). */
 export function renderPasswordForm(options: PasswordFormOptions): string {
-  const body = `<h1>Sign in</h1>
+  const body = `${securityCallout()}
+  <h1>Sign in</h1>
   <p class="sub">to continue to <span class="mono" style="font-size:13px">${escapeHtml(options.continueTo)}</span></p>
   ${options.error ? `<div class="err" role="alert">${escapeHtml(options.error)}</div>` : ''}
   <form method="post" action="${escapeHtml(options.actionPath)}">

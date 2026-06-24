@@ -1,0 +1,11 @@
+{
+  "main": "dist-sea/bundle.cjs",
+  "output": "dist-sea/sea-prep.blob",
+  "disableExperimentalSEAWarning": true,
+  "useSnapshot": false,
+  "useCodeCache": false,
+  "assets": {
+    "portal-index-html": "portal/dist/index.html",
+    "package-json": "package.json"
+  }
+}

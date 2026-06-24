@@ -52,5 +52,96 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      # MSAL cross-platform smoke-tests (#13) run inside `npm run test:e2e` as child processes.
+      # Provision the .NET SDK and Python + the MSAL packages so they execute (rather than skip)
+      # in CI. Pin Python 3.12 (a version with a published `msal` wheel) regardless of the local
+      # toolchain. Instance discovery is disabled in every client, so the suite stays offline.
+      - name: Set up .NET SDK (MSAL.NET smoke-test)
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Set up Python (MSAL Python smoke-test)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install MSAL Python + JWT validation packages
+        run: python -m pip install --upgrade pip msal pyjwt cryptography requests
+
       - name: End-to-end (real-MSAL) tests
         run: npm run test:e2e
+
+  # Run-targets (#14): prove the hardened image actually builds, runs as the published port is
+  # reachable from the HOST (HOST=0.0.0.0), the HEALTHCHECK goes healthy, env passthrough works,
+  # and the data volume persists the DB + auto-generated cert across a stop/start. Maps to
+  # acceptance criteria 3/4/5/6/7/9.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t entra-local:ci .
+
+      - name: Run container (fresh named volume)
+        run: |
+          docker run -d --name el-ci -p 8443:8443 -v el-ci-data:/app/data entra-local:ci
+
+      - name: Wait for the container HEALTHCHECK to report healthy
+        run: |
+          for i in $(seq 1 30); do
+            status=$(docker inspect --format '{{.State.Health.Status}}' el-ci)
+            echo "health: $status"
+            if [ "$status" = "healthy" ]; then exit 0; fi
+            if [ "$status" = "unhealthy" ]; then docker logs el-ci; exit 1; fi
+            sleep 2
+          done
+          echo "container did not become healthy in time"; docker logs el-ci; exit 1
+
+      - name: Host /health is reachable over the mapped port (proves HOST=0.0.0.0) and returns 200 ok
+        run: |
+          body=$(curl -ksS https://localhost:8443/health)
+          echo "$body"
+          echo "$body" | grep -q '"status":"ok"'
+
+      - name: Portal is served at /
+        run: curl -ksS https://localhost:8443/ | grep -q 'id="root"'
+
+      - name: Env passthrough — a second container honours -e TENANT_ID
+        run: |
+          tid="22222222-2222-2222-2222-222222222222"
+          docker run -d --name el-ci-env -p 9000:9000 -e PORT=9000 -e TENANT_ID="$tid" \
+            -v el-ci-env-data:/app/data entra-local:ci
+          for i in $(seq 1 30); do
+            s=$(docker inspect --format '{{.State.Health.Status}}' el-ci-env)
+            if [ "$s" = "healthy" ]; then break; fi
+            sleep 2
+          done
+          curl -ksS https://localhost:9000/health | grep -q "\"tenantId\":\"$tid\""
+
+      - name: Capture cert fingerprint + create an admin-API row, then stop/start the container
+        run: |
+          fp1=$(docker exec el-ci node -e "const{X509Certificate}=require('crypto'),fs=require('fs');console.log(new X509Certificate(fs.readFileSync('/app/data/tls/cert.pem')).fingerprint256)")
+          echo "fingerprint before: $fp1"
+          curl -ksS -X POST -H 'content-type: application/json' \
+            -d '{"displayName":"ci-persist-marker","isConfidential":false}' \
+            https://localhost:8443/admin/api/apps | grep -q 'ci-persist-marker'
+          docker stop el-ci
+          docker start el-ci
+          for i in $(seq 1 30); do
+            s=$(docker inspect --format '{{.State.Health.Status}}' el-ci)
+            if [ "$s" = "healthy" ]; then break; fi
+            sleep 2
+          done
+          fp2=$(docker exec el-ci node -e "const{X509Certificate}=require('crypto'),fs=require('fs');console.log(new X509Certificate(fs.readFileSync('/app/data/tls/cert.pem')).fingerprint256)")
+          echo "fingerprint after:  $fp2"
+          [ "$fp1" = "$fp2" ] || { echo "cert fingerprint changed across restart"; exit 1; }
+          curl -ksS "https://localhost:8443/admin/api/apps?search=ci-persist-marker" \
+            | grep -q 'ci-persist-marker'
+
+      - name: Tear down
+        if: always()
+        run: |
+          docker rm -f el-ci el-ci-env || true
+          docker volume rm el-ci-data el-ci-env-data || true
