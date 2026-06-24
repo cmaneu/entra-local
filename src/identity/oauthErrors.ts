@@ -21,7 +21,11 @@ export type OAuthErrorCode =
   | 'unauthorized_client'
   | 'unsupported_grant_type'
   | 'invalid_scope'
-  | 'server_error';
+  | 'server_error'
+  // RFC 8628 device-code polling codes (#15).
+  | 'authorization_pending'
+  | 'access_denied'
+  | 'expired_token';
 
 /** Default HTTP status per error code (per the spec error table). */
 const DEFAULT_STATUS: Record<OAuthErrorCode, number> = {
@@ -32,6 +36,9 @@ const DEFAULT_STATUS: Record<OAuthErrorCode, number> = {
   unsupported_grant_type: 400,
   invalid_scope: 400,
   server_error: 500,
+  authorization_pending: 400,
+  access_denied: 400,
+  expired_token: 400,
 };
 
 /** Default AADSTS-style numeric code per error (best-effort parity with Entra). */
@@ -43,6 +50,9 @@ const DEFAULT_AADSTS: Record<OAuthErrorCode, number> = {
   unsupported_grant_type: 70003,
   invalid_scope: 70011,
   server_error: 90099,
+  authorization_pending: 70016,
+  access_denied: 65004,
+  expired_token: 70020,
 };
 
 /** The AADSTS-style JSON error body returned by the token endpoint. */

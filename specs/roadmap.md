@@ -71,7 +71,7 @@ reaching the full v1.0 acceptance bar in [`global-spec.md` §15](global-spec.md#
 
 | # | Feature | Description | UI | Dependencies | Status |
 |---|---------|-------------|----|--------------|--------|
-| 15 | Device Code flow | `/devicecode` + user-code approval page (RFC 8628) for CLI/device apps | ✓ | 5, 6 | ⬜ |
+| 15 | Device Code flow | `/devicecode` + user-code approval page (RFC 8628) for CLI/device apps | ✓ | 5, 6 | ✅ |
 | 16 | Optional password login enforcement | `REQUIRE_PASSWORD` username+password login instead of account picker | ✓ | 6 | ⬜ |
 | 17 | Single-executable packaging | Self-contained binary bundling runtime, portal assets, migrations | – | 14 | ✅ |
 

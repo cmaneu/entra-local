@@ -30,17 +30,28 @@ export interface AuthStateSigner {
   verify(token: string): AuthorizeState | undefined;
 }
 
-/** Create a state signer bound to a fresh per-process HMAC key. */
-export function createAuthStateSigner(key: Buffer = randomBytes(32)): AuthStateSigner {
+/** A generic signed-state signer over an arbitrary JSON-serializable snapshot type `T`. */
+export interface SignedStateSigner<T> {
+  sign(state: T): string;
+  verify(token: string): T | undefined;
+}
+
+/**
+ * Create a generic HMAC-signed-state signer bound to a fresh per-process key. The snapshot is
+ * JSON-serialized, base64url-encoded and HMAC-SHA256 signed (`payload.sig`); `verify` rejects a
+ * tampered payload in constant time. Used by `/authorize` (#6, `T = AuthorizeState`) and the device
+ * approval flow (#15, `T = DeviceApprovalState`).
+ */
+export function createSignedStateSigner<T>(key: Buffer = randomBytes(32)): SignedStateSigner<T> {
   const mac = (payload: string): Buffer => createHmac('sha256', key).update(payload).digest();
 
   return {
-    sign(state) {
+    sign(state: T) {
       const payload = Buffer.from(JSON.stringify(state), 'utf8').toString('base64url');
       const sig = mac(payload).toString('base64url');
       return `${payload}.${sig}`;
     },
-    verify(token) {
+    verify(token: string): T | undefined {
       const dot = token.indexOf('.');
       if (dot <= 0) return undefined;
       const payload = token.slice(0, dot);
@@ -57,10 +68,15 @@ export function createAuthStateSigner(key: Buffer = randomBytes(32)): AuthStateS
         return undefined;
       }
       try {
-        return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as AuthorizeState;
+        return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as T;
       } catch {
         return undefined;
       }
     },
   };
+}
+
+/** Create a state signer for the `/authorize` flow (`T = AuthorizeState`). */
+export function createAuthStateSigner(key: Buffer = randomBytes(32)): AuthStateSigner {
+  return createSignedStateSigner<AuthorizeState>(key);
 }

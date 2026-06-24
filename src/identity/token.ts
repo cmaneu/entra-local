@@ -3,10 +3,11 @@ import type { Config } from '../config/schema.js';
 import { TENANT_ENDPOINTS, tenantRoute } from '../http/pathmap.js';
 import { tenantGuard } from '../http/tenant.js';
 import type { Store } from '../store/store.js';
-import type { AppRegistration } from '../store/types.js';
 import { scopeNames } from '../tokens/claims.js';
 import type { TokenService } from '../tokens/service.js';
+import { authenticateClient, field, type Body } from './clientAuth.js';
 import { autoGrantedRoles, resolveClientCredentialScope } from './clientCredentials.js';
+import { DEVICE_CODE_GRANT, handleDeviceCodeGrant } from './deviceCode.js';
 import { sendOAuthError } from './oauthErrors.js';
 
 /**
@@ -15,44 +16,13 @@ import { sendOAuthError } from './oauthErrors.js';
  * renewal with rotation + reuse detection); #8/#15 add `client_credentials`/`device_code`.
  * Client authentication (confidential `client_secret_post`/`client_secret_basic`; public clients
  * authenticate by `client_id` + possession only — presenting a secret is rejected) is shared via
- * `authenticateClient`.
+ * `authenticateClient` (`clientAuth.ts`).
  *
  * All errors use the canonical AADSTS-style convention in `oauthErrors.ts` (`Cache-Control:
  * no-store`); success is `200 application/json` with `Cache-Control: no-store`, `Pragma: no-cache`.
  */
 
-type Body = Record<string, unknown>;
-
-/** Read a single string field from the parsed form body. */
-function field(body: Body, key: string): string | undefined {
-  const v = body[key];
-  if (typeof v === 'string') return v;
-  if (Array.isArray(v) && typeof v[0] === 'string') return v[0];
-  return undefined;
-}
-
-/** Parse `Authorization: Basic base64(client_id:client_secret)` (client_secret_basic). */
-function parseBasicAuth(header: string | undefined): { id: string; secret: string } | undefined {
-  if (!header || !header.toLowerCase().startsWith('basic ')) return undefined;
-  let decoded: string;
-  try {
-    decoded = Buffer.from(header.slice(6).trim(), 'base64').toString('utf8');
-  } catch {
-    return undefined;
-  }
-  const idx = decoded.indexOf(':');
-  if (idx === -1) return undefined;
-  const decode = (s: string): string => {
-    try {
-      return decodeURIComponent(s);
-    } catch {
-      return s;
-    }
-  };
-  return { id: decode(decoded.slice(0, idx)), secret: decode(decoded.slice(idx + 1)) };
-}
-
-interface TokenContext {
+export interface TokenContext {
   store: Store;
   config: Config;
   tokenService: TokenService;
@@ -64,69 +34,6 @@ function correlationId(request: FastifyRequest): string {
   return typeof header === 'string' ? header : String(request.id);
 }
 
-/** A client-auth failure: the canonical OAuth error to surface (correlation id added by caller). */
-interface ClientAuthFailure {
-  error: 'invalid_client';
-  description: string;
-}
-
-/**
- * Authenticate the client on the token endpoint (shared by every grant). `client_secret_basic`
- * (Authorization header) takes precedence over `client_secret_post` (body). Confidential clients
- * must present a valid `client_secret`; public clients must NOT present one (possession of the
- * code/refresh token is their proof). Returns the resolved app or a canonical `invalid_client`.
- */
-function authenticateClient(
-  request: FastifyRequest,
-  ctx: TokenContext,
-  body: Body,
-): { app: AppRegistration } | { failure: ClientAuthFailure } {
-  const basic = parseBasicAuth(request.headers.authorization);
-  const clientId = basic?.id ?? field(body, 'client_id');
-  const clientSecret = basic?.secret ?? field(body, 'client_secret');
-
-  if (!clientId) {
-    return {
-      failure: {
-        error: 'invalid_client',
-        description: 'A client_id is required to authenticate the token request.',
-      },
-    };
-  }
-  const app = ctx.store.apps.getByAppId(clientId);
-  if (!app) {
-    return {
-      failure: {
-        error: 'invalid_client',
-        description: `No application is registered with client_id '${clientId}'.`,
-      },
-    };
-  }
-  if (app.isConfidential) {
-    if (!clientSecret) {
-      return {
-        failure: {
-          error: 'invalid_client',
-          description: 'This confidential client requires a client_secret.',
-        },
-      };
-    }
-    if (!ctx.store.apps.verifySecret(app.appId, clientSecret)) {
-      return {
-        failure: { error: 'invalid_client', description: 'The provided client_secret is invalid.' },
-      };
-    }
-  } else if (clientSecret) {
-    return {
-      failure: {
-        error: 'invalid_client',
-        description: 'A public client must not present a client_secret.',
-      },
-    };
-  }
-  return { app };
-}
-
 /** Handle `grant_type=authorization_code` (the #6 grant). */
 async function handleAuthorizationCode(
   request: FastifyRequest,
@@ -136,7 +43,7 @@ async function handleAuthorizationCode(
 ): Promise<void> {
   const cid = correlationId(request);
 
-  const auth = authenticateClient(request, ctx, body);
+  const auth = authenticateClient(request, ctx.store, body);
   if ('failure' in auth) {
     sendOAuthError(reply, { ...auth.failure, correlationId: cid });
     return;
@@ -244,7 +151,7 @@ async function handleRefreshToken(
 ): Promise<void> {
   const cid = correlationId(request);
 
-  const auth = authenticateClient(request, ctx, body);
+  const auth = authenticateClient(request, ctx.store, body);
   if ('failure' in auth) {
     sendOAuthError(reply, { ...auth.failure, correlationId: cid });
     return;
@@ -343,7 +250,7 @@ async function handleClientCredentials(
 ): Promise<void> {
   const cid = correlationId(request);
 
-  const auth = authenticateClient(request, ctx, body);
+  const auth = authenticateClient(request, ctx.store, body);
   if ('failure' in auth) {
     sendOAuthError(reply, { ...auth.failure, correlationId: cid });
     return;
@@ -406,6 +313,11 @@ const GRANT_HANDLERS: Record<string, GrantHandler> = {
   authorization_code: handleAuthorizationCode,
   refresh_token: handleRefreshToken,
   client_credentials: handleClientCredentials,
+  // RFC 8628 mandates (and discovery advertises) the URN grant key. `@azure/msal-node`
+  // (GrantType.DEVICE_CODE_GRANT) polls with the bare `device_code` value, so we accept both
+  // aliases — they dispatch to the same handler — to interoperate with the real MSAL client.
+  [DEVICE_CODE_GRANT]: handleDeviceCodeGrant,
+  device_code: handleDeviceCodeGrant,
 };
 
 /**

@@ -17,6 +17,7 @@ export interface DiscoveryMetadata {
   issuer: string;
   authorization_endpoint: string;
   token_endpoint: string;
+  device_authorization_endpoint: string;
   jwks_uri: string;
   userinfo_endpoint: string;
   end_session_endpoint: string;
@@ -48,20 +49,26 @@ function tenantUrl(config: Config, suffix: string): string {
 
 /**
  * Build the full MSAL-tuned discovery document. All URLs are absolute and GUID-form (identical for
- * every accepted alias). Iteration 1 lockstep: no `device_authorization_endpoint`, no device-code
- * grant, `response_modes_supported` exactly `["query","fragment"]`, no Microsoft cloud-host fields.
+ * every accepted alias). Advertises the `device_authorization_endpoint` + the RFC 8628 device-code
+ * grant (#15) alongside `authorization_code`/`refresh_token`/`client_credentials`.
  */
 export function buildDiscoveryMetadata(config: Config): DiscoveryMetadata {
   return {
     issuer: buildIssuer(config),
     authorization_endpoint: tenantUrl(config, TENANT_ENDPOINTS.authorize),
     token_endpoint: tenantUrl(config, TENANT_ENDPOINTS.token),
+    device_authorization_endpoint: tenantUrl(config, TENANT_ENDPOINTS.devicecode),
     jwks_uri: tenantUrl(config, TENANT_ENDPOINTS.jwks),
     userinfo_endpoint: `${config.publicOrigin}${USERINFO_PATH}`,
     end_session_endpoint: tenantUrl(config, TENANT_ENDPOINTS.logout),
     response_types_supported: ['code'],
     response_modes_supported: ['query', 'fragment'],
-    grant_types_supported: ['authorization_code', 'refresh_token', 'client_credentials'],
+    grant_types_supported: [
+      'authorization_code',
+      'refresh_token',
+      'client_credentials',
+      'urn:ietf:params:oauth:grant-type:device_code',
+    ],
     subject_types_supported: ['pairwise'],
     scopes_supported: ['openid', 'profile', 'email', 'offline_access'],
     id_token_signing_alg_values_supported: ['RS256'],

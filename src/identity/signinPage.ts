@@ -214,6 +214,19 @@ export interface SignInPageOptions {
   continueTo: string;
   tenantId: string;
   issuer: string;
+  /** Extra escaped hidden inputs to inject into the form (e.g. the device flow's `__el_step`). */
+  extraHiddenFields?: Record<string, string>;
+}
+
+/** Render a record of extra hidden inputs as escaped `<input type="hidden">`s. */
+function renderHiddenFields(fields?: Record<string, string>): string {
+  if (!fields) return '';
+  return Object.entries(fields)
+    .map(
+      ([name, value]) =>
+        `<input type="hidden" name="${escapeHtml(name)}" value="${escapeHtml(value)}" />`,
+    )
+    .join('\n    ');
 }
 
 export interface AccountPickerOptions extends SignInPageOptions {
@@ -276,6 +289,7 @@ export function renderAccountPicker(options: AccountPickerOptions): string {
   ${options.error ? `<div class="err" role="alert">${escapeHtml(options.error)}</div>` : ''}
   <form method="post" action="${escapeHtml(options.actionPath)}">
     <input type="hidden" name="${SIGNIN_FIELDS.state}" value="${escapeHtml(options.signedState)}" />
+    ${renderHiddenFields(options.extraHiddenFields)}
     ${inner}
   </form>
   ${footer(options.tenantId, options.issuer)}`;
@@ -298,6 +312,7 @@ export function renderPasswordForm(options: PasswordFormOptions): string {
   ${options.error ? `<div class="err" role="alert">${escapeHtml(options.error)}</div>` : ''}
   <form method="post" action="${escapeHtml(options.actionPath)}">
     <input type="hidden" name="${SIGNIN_FIELDS.state}" value="${escapeHtml(options.signedState)}" />
+    ${renderHiddenFields(options.extraHiddenFields)}
     <label for="el-username">Username</label>
     <input id="el-username" type="text" name="${SIGNIN_FIELDS.username}" autocomplete="username"
            autofocus value="${escapeHtml(options.username ?? '')}" placeholder="user@entralocal.dev" />
@@ -344,4 +359,98 @@ export function renderSignedOutPage(options: SignedOutPageOptions): string {
   <p class="sub">Your Entra Local session has ended. You can close this window.</p>
   ${footer(options.tenantId, options.issuer)}`;
   return page('Signed out', 'Entra Local', body, 'Signed out of Entra Local');
+}
+
+/** Hidden field names driving the device-approval (#15) `/devicecode/verify` POST state machine. */
+export const DEVICE_FIELDS = {
+  /** `lookup` | `signin` | `decide` — selects the `/verify` branch. */
+  step: '__el_step',
+  /** The human user code (code-entry input + carried hidden). */
+  userCode: 'user_code',
+  /** `approve` | `deny` (decide step). */
+  decision: '__el_decision',
+} as const;
+
+export interface DeviceCodeEntryOptions {
+  /** Form POST target (`/{tenant}/oauth2/v2.0/devicecode/verify`). */
+  actionPath: string;
+  /** Optional pre-fill from `?user_code=` on the GET. */
+  userCode?: string | null;
+  /** Optional error banner (e.g. a previous not-found). */
+  error?: string | null;
+  tenantId: string;
+  issuer: string;
+}
+
+/** Render the device-code entry page (`GET /devicecode`): type/confirm the `user_code`. */
+export function renderDeviceCodeEntry(options: DeviceCodeEntryOptions): string {
+  const body = `${securityCallout()}
+  <h1>Enter code</h1>
+  <p class="sub">Enter the code shown on your device to continue.</p>
+  ${options.error ? `<div class="err" role="alert">${escapeHtml(options.error)}</div>` : ''}
+  <form method="post" action="${escapeHtml(options.actionPath)}">
+    <input type="hidden" name="${DEVICE_FIELDS.step}" value="lookup" />
+    <label for="el-usercode">Code</label>
+    <input id="el-usercode" type="text" name="${DEVICE_FIELDS.userCode}" autocomplete="off"
+           autofocus inputmode="text" placeholder="BCDF-GHJK" class="mono"
+           value="${escapeHtml(options.userCode ?? '')}" />
+    <button class="primary" type="submit">Next</button>
+  </form>
+  ${footer(options.tenantId, options.issuer)}`;
+  return page('Enter code', 'Entra Local', body, 'Enter device code');
+}
+
+export interface DeviceConsentOptions {
+  /** Form POST target (`/{tenant}/oauth2/v2.0/devicecode/verify`). */
+  actionPath: string;
+  /** Signed `DeviceApprovalState` (`{ userCode, sid }`), re-verified server-side. */
+  signedState: string;
+  /** The requesting app's display name. */
+  appName: string;
+  /** The requested scopes (informational; auto-consent). */
+  scopes: readonly string[];
+  /** The signed-in approver's UPN. */
+  username: string;
+  tenantId: string;
+  issuer: string;
+}
+
+/** Render the device-approval consent screen (`decide` step: Approve / Deny). */
+export function renderDeviceConsent(options: DeviceConsentOptions): string {
+  const scopeList =
+    options.scopes.length > 0
+      ? `<ul class="scopes">${options.scopes
+          .map((s) => `<li class="mono">${escapeHtml(s)}</li>`)
+          .join('')}</ul>`
+      : '';
+  const body = `${securityCallout()}
+  <h1>Approve sign-in</h1>
+  <p class="sub"><span class="mono" style="font-size:13px">${escapeHtml(options.appName)}</span>
+     is requesting to sign in as
+     <span class="mono" style="font-size:13px">${escapeHtml(options.username)}</span>.</p>
+  ${scopeList}
+  <form method="post" action="${escapeHtml(options.actionPath)}">
+    <input type="hidden" name="${SIGNIN_FIELDS.state}" value="${escapeHtml(options.signedState)}" />
+    <input type="hidden" name="${DEVICE_FIELDS.step}" value="decide" />
+    <button class="primary" type="submit" name="${DEVICE_FIELDS.decision}" value="approve">Approve</button>
+    <button class="primary" type="submit" name="${DEVICE_FIELDS.decision}" value="deny"
+            style="background:var(--neutral-40);margin-left:8px">Deny</button>
+  </form>
+  ${footer(options.tenantId, options.issuer)}`;
+  return page('Approve sign-in', options.appName, body, 'Approve device sign-in');
+}
+
+export interface DeviceResultOptions {
+  heading: string;
+  message: string;
+  tenantId: string;
+  issuer: string;
+}
+
+/** Render a terminal device-approval result page (success / denied). */
+export function renderDeviceResult(options: DeviceResultOptions): string {
+  const body = `<h1>${escapeHtml(options.heading)}</h1>
+  <p class="sub">${escapeHtml(options.message)}</p>
+  ${footer(options.tenantId, options.issuer)}`;
+  return page(options.heading, 'Entra Local', body, escapeHtml(options.heading));
 }

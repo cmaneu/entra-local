@@ -8,22 +8,20 @@ afterEach(async () => {
   await ctx?.close();
 });
 
-/** Every reserved canonical path that is still a `501` stub (only `/devicecode` (#15) remains). */
-function reservedPaths(): { method: 'GET' | 'POST'; url: string }[] {
-  const t = TEST_TENANT_ID;
-  return [{ method: 'POST', url: `/${t}/oauth2/v2.0/devicecode` }];
-}
-
+/**
+ * The device-code endpoint (#15) replaced the last reserved `501` stub with a real handler. No
+ * reserved OIDC/OAuth `501` stubs remain.
+ */
 describe('Path map: reserved-stub rule (criterion 8)', () => {
-  it('every remaining reserved OIDC/OAuth path returns 501 (not 404/SPA)', async () => {
+  it('the device-code endpoint reaches the real #15 handler (401 without client, not 501/404/SPA)', async () => {
     ctx = await buildTestApp();
-    for (const { method, url } of reservedPaths()) {
-      const res = await ctx.inject({ method, url });
-      expect(res.statusCode, `${method} ${url}`).toBe(501);
-      expect(res.headers['content-type'], `${method} ${url}`).toContain('application/json');
-      const body = res.json() as { error: { code: string } };
-      expect(body.error.code).toBe('not_implemented');
-    }
+    const url = `/${TEST_TENANT_ID}/oauth2/v2.0/devicecode`;
+    const res = await ctx.inject({ method: 'POST', url });
+    // No client_id → canonical invalid_client (401), not the old 501 stub.
+    expect(res.statusCode, url).toBe(401);
+    expect(res.headers['content-type'], url).toContain('application/json');
+    const body = res.json() as { error: string };
+    expect(body.error).toBe('invalid_client');
   });
 
   it('discovery routing reaches the real handler for the GUID and aliases', async () => {

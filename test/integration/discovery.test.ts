@@ -40,12 +40,18 @@ describe('OIDC discovery document shape (criterion 1)', () => {
       issuer: `${ORIGIN}/${TEST_TENANT_ID}/v2.0`,
       authorization_endpoint: `${ORIGIN}/${TEST_TENANT_ID}/oauth2/v2.0/authorize`,
       token_endpoint: `${ORIGIN}/${TEST_TENANT_ID}/oauth2/v2.0/token`,
+      device_authorization_endpoint: `${ORIGIN}/${TEST_TENANT_ID}/oauth2/v2.0/devicecode`,
       jwks_uri: `${ORIGIN}/${TEST_TENANT_ID}/discovery/v2.0/keys`,
       userinfo_endpoint: `${ORIGIN}/graph/oidc/userinfo`,
       end_session_endpoint: `${ORIGIN}/${TEST_TENANT_ID}/oauth2/v2.0/logout`,
       response_types_supported: ['code'],
       response_modes_supported: ['query', 'fragment'],
-      grant_types_supported: ['authorization_code', 'refresh_token', 'client_credentials'],
+      grant_types_supported: [
+        'authorization_code',
+        'refresh_token',
+        'client_credentials',
+        'urn:ietf:params:oauth:grant-type:device_code',
+      ],
       subject_types_supported: ['pairwise'],
       scopes_supported: ['openid', 'profile', 'email', 'offline_access'],
       id_token_signing_alg_values_supported: ['RS256'],
@@ -120,14 +126,17 @@ describe('OIDC discovery invalid tenant (criterion 4)', () => {
   });
 });
 
-describe('OIDC discovery Iteration 1 lockstep (criterion 5)', () => {
-  it('omits the device endpoint/grant and form_post; advertises exactly query+fragment', async () => {
+describe('OIDC discovery device-code advertisement (criterion 18 / #15)', () => {
+  it('advertises the device endpoint + grant; advertises exactly query+fragment', async () => {
     ctx = await buildTestApp();
     const { doc } = await getDiscovery(ctx, TEST_TENANT_ID);
 
-    // No device-code grant, no device_authorization_endpoint (added by #15).
-    expect(doc.grant_types_supported).not.toContain('urn:ietf:params:oauth:grant-type:device_code');
-    expect(doc).not.toHaveProperty('device_authorization_endpoint');
+    // The device-code grant + device_authorization_endpoint are now advertised (added by #15).
+    expect(doc.grant_types_supported).toContain('urn:ietf:params:oauth:grant-type:device_code');
+    expect(doc).toHaveProperty('device_authorization_endpoint');
+    expect(doc.device_authorization_endpoint).toBe(
+      `${ORIGIN}/${TEST_TENANT_ID}/oauth2/v2.0/devicecode`,
+    );
 
     // response_modes_supported is exactly ["query","fragment"] — no form_post in Iteration 1.
     expect(doc.response_modes_supported).toEqual(['query', 'fragment']);
@@ -152,6 +161,7 @@ describe('OIDC discovery Iteration 1 lockstep (criterion 5)', () => {
     const advertised = [
       doc.authorization_endpoint,
       doc.token_endpoint,
+      doc.device_authorization_endpoint,
       doc.jwks_uri,
       doc.userinfo_endpoint,
       doc.end_session_endpoint,

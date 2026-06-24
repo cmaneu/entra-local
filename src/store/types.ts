@@ -262,3 +262,36 @@ export interface NewSession {
   userId: string;
   expiresAt: number;
 }
+
+/** Device-code lifecycle status (`device_codes.status`). */
+export type DeviceCodeStatus = 'pending' | 'approved' | 'denied' | 'expired';
+
+/**
+ * Device authorization grant row (RFC 8628, #15). The PK (`deviceCode`) holds the SHA-256 hash of
+ * the opaque device code returned to the client; `userCode` is the plaintext human-transcribable
+ * code (canonical `XXXX-XXXX` form). `userId` is set when an approver consents.
+ */
+export interface DeviceCode {
+  /** SHA-256 hash of the opaque device code (the PK / lookup key). */
+  deviceCode: string;
+  userCode: string;
+  appId: string;
+  userId: string | null;
+  /** Space-joined granted scopes captured at the device authorization endpoint. */
+  scopes: string;
+  status: DeviceCodeStatus;
+  interval: number;
+  expiresAt: number;
+  createdAt: number;
+}
+
+export interface NewDeviceCode {
+  /** SHA-256 hash of the opaque device code (stored as the PK). */
+  deviceCode: string;
+  /** Plaintext human user code (canonical `XXXX-XXXX` form). */
+  userCode: string;
+  appId: string;
+  scopes: string;
+  interval: number;
+  expiresAt: number;
+}

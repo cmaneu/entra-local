@@ -2,9 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { createGraphHandlers } from '../graph/handlers.js';
 import { createUserInfoHandler } from '../identity/userinfo.js';
 import { appVersion } from '../version.js';
-import { sendJsonNotFound, sendNotImplemented } from './errors.js';
-import { TENANT_ENDPOINTS, tenantRoute } from './pathmap.js';
-import { tenantGuard } from './tenant.js';
+import { sendJsonNotFound } from './errors.js';
 
 /** Documented `/health` response shape (see spec). Never requires auth. */
 export interface HealthResponse {
@@ -27,24 +25,6 @@ export function registerHealth(app: FastifyInstance): void {
     };
     void reply.code(200).send(body);
   });
-}
-
-/**
- * Reserved `/{tenant}/...` OIDC/OAuth routes. Registered as parametric (`:tenant`) routes so an
- * unknown tenant resolves to a JSON error (via tenantGuard), and a valid tenant resolves to a
- * `501` stub until the owning feature replaces it (Reserved-stub rule).
- */
-export function registerTenantRoutes(app: FastifyInstance): void {
-  const oauthGuard = { preHandler: tenantGuard('oauth') };
-
-  // OIDC discovery (#4) is registered by `registerDiscoveryRoute` (real handler, not a stub).
-  // JWKS (#3) is registered by `registerTokens` (real handler, not a stub).
-
-  // OAuth endpoints (#6 / #9 / #15).
-  // /authorize (GET+POST) and /token (POST) are real handlers registered by `registerOAuthRoutes`
-  // (feature #6); /logout (GET) is the real #9 end-session handler (also via `registerOAuthRoutes`).
-  // The remaining endpoint is still a reserved stub.
-  app.post(tenantRoute(TENANT_ENDPOINTS.devicecode), oauthGuard, sendNotImplemented('#15'));
 }
 
 /**

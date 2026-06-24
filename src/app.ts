@@ -4,7 +4,7 @@ import formbody from '@fastify/formbody';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import type { Config } from './config/schema.js';
 import { errorHandler } from './http/errors.js';
-import { registerGraphRoutes, registerHealth, registerTenantRoutes } from './http/plugins.js';
+import { registerGraphRoutes, registerHealth } from './http/plugins.js';
 import { registerSpaFallback } from './http/spaFallback.js';
 import { registerAdminApi } from './admin/plugin.js';
 import { registerDiscoveryRoute } from './identity/discovery.js';
@@ -78,7 +78,6 @@ export async function buildApp(
   registerTokenService(app);
 
   registerHealth(app);
-  registerTenantRoutes(app);
   registerDiscoveryRoute(app);
   registerOAuthRoutes(app);
   await registerGraphRoutes(app);

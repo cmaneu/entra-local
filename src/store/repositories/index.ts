@@ -2,6 +2,7 @@ import type { Database } from '../db.js';
 import type { Clock } from '../util.js';
 import { createAppsRepository, type AppsRepository } from './apps.js';
 import { createAuthCodesRepository, type AuthCodesRepository } from './authCodes.js';
+import { createDeviceCodesRepository, type DeviceCodesRepository } from './deviceCodes.js';
 import { createGroupsRepository, type GroupsRepository } from './groups.js';
 import { createRefreshTokensRepository, type RefreshTokensRepository } from './refreshTokens.js';
 import { createSessionsRepository, type SessionsRepository } from './sessions.js';
@@ -19,6 +20,7 @@ export interface Repositories {
   authCodes: AuthCodesRepository;
   refreshTokens: RefreshTokensRepository;
   sessions: SessionsRepository;
+  deviceCodes: DeviceCodesRepository;
 }
 
 /** Build all repositories sharing one connection and clock. */
@@ -32,12 +34,14 @@ export function createRepositories(db: Database, clock: Clock): Repositories {
     authCodes: createAuthCodesRepository(db, clock),
     refreshTokens: createRefreshTokensRepository(db, clock),
     sessions: createSessionsRepository(db, clock),
+    deviceCodes: createDeviceCodesRepository(db, clock),
   };
 }
 
 export type {
   AppsRepository,
   AuthCodesRepository,
+  DeviceCodesRepository,
   GroupsRepository,
   RefreshTokensRepository,
   SessionsRepository,
