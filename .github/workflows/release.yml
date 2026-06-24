@@ -77,6 +77,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Stamp the published Release's tag into package.json so the shipped binary reports the real
+      # release version at /health (and in the portal) instead of the in-repo placeholder. SEA
+      # embeds package.json at blob-generation time, so this must precede the build below.
+      - name: Stamp release version into package.json
+        if: github.event_name == 'release'
+        shell: bash
+        run: |
+          version="${{ github.event.release.tag_name }}"
+          version="${version#v}"
+          npm version "$version" --no-git-tag-version --allow-same-version
+
       - name: Build server + portal
         run: npm run build
 
@@ -118,6 +129,13 @@ jobs:
           version="${{ github.event.release.tag_name }}"
           version="${version#v}"
           echo "version=${version:-dev}" >> "$GITHUB_OUTPUT"
+
+      # Stamp the published Release's tag into package.json BEFORE building: the Dockerfile copies
+      # package.json into the runtime image, so the container reports the real release version at
+      # /health (and in the portal) instead of the in-repo placeholder.
+      - name: Stamp release version into package.json
+        if: github.event_name == 'release'
+        run: npm version "${{ steps.meta.outputs.version }}" --no-git-tag-version --allow-same-version
 
       - name: Build image
         run: docker build -t entra-local:release .
