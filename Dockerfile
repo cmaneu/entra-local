@@ -2,7 +2,8 @@
 #
 # Same entrypoint (`node dist/index.js`) and one config/data model as `npm start`: the only
 # difference is that `data/` lives in the mounted volume at /app/data. The Node base must be
-# >=22.5 so the built-in `node:sqlite` driver works without native bindings (locked decision).
+# >=22.13 so the built-in `node:sqlite` driver works without native bindings and without the
+# `--experimental-sqlite` flag (locked decision).
 ARG NODE_IMAGE=node:24-slim
 
 # --- Stage 1: build the server + the single-file admin portal (needs devDeps via `npm ci`). ---
