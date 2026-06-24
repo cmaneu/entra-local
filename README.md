@@ -1,15 +1,27 @@
+<div align="center">
+
+<img src="assets/entra-local-logo.svg" alt="Entra Local" width="520" />
+
 # Entra Local
 
-**A local emulator for Microsoft Entra ID (formerly Azure AD), built for application developers.**
+**A local, MSAL-compatible emulator of Microsoft Entra ID (formerly Azure AD), for application developers.**
+
+</div>
 
 Entra Local exposes the same OpenID Connect / OAuth 2.0 endpoints that **MSAL** talks to —
 plus a minimal Microsoft Graph surface and a web portal to register users and applications.
 Point your app's `authority` at the emulator and develop sign-in, token acquisition, and
 protected-API calls **offline, with no cloud tenant, and no shared-tenant clutter**.
 
-> ⚠️ **Development tool only.** Entra Local is intentionally insecure for the sake of
-> developer ergonomics (open admin portal, self-signed certs, seeded secrets). Never use it
-> in production or expose it to untrusted networks.
+> [!CAUTION]
+> **Local development tool only — intentionally insecure, and a partial emulation.** Entra Local
+> trades security for developer ergonomics: an **open, unauthenticated** admin portal and API,
+> **self-signed** certificates, **publicly known seeded** users and secrets, and signing keys
+> stored unencrypted on disk. It emulates only a **small, fixed slice** of Entra ID. **Run it on
+> `localhost` only** — never put real users, passwords, or secrets into it, and never expose it to
+> an untrusted network or the public internet. See
+> [What it emulates](#what-it-emulates--and-what-it-doesnt) and
+> [Security & limitations](#security--limitations).
 
 ---
 
@@ -20,7 +32,7 @@ admin consent, clutters shared tenants with throwaway app registrations, and can
 offline or deterministically in CI. Entra Local is a drop-in identity provider that speaks
 the same protocols, so your MSAL-based app works against it with only configuration changes.
 
-## Features (MVP)
+## Features
 
 - 🔐 **MSAL-compatible OIDC/OAuth2 endpoints** — discovery, JWKS, authorize, token,
   device code, logout, userinfo.
@@ -35,9 +47,41 @@ the same protocols, so your MSAL-based app works against it with only configurat
 - 🔒 **HTTPS by default** — auto-generated, persisted self-signed certificate.
 - 📦 **Run anywhere** — `npm start`, a single executable, or a Docker container.
 
-> Out of scope for the MVP: multi-tenant directories, Implicit flow, ROPC, OBO, SAML /
-> WS-Federation, MFA, Conditional Access, and full Graph parity. See the
-> [roadmap](specs/roadmap.md).
+## What it emulates — and what it doesn't
+
+Entra Local deliberately emulates a **small, well-defined slice** of Entra ID: the protocol
+surface MSAL needs for the most common developer scenarios. Treat anything not listed under
+**Supported** as **unsupported** — if your app depends on it, validate against a real tenant.
+
+### ✅ Supported
+
+**Developer scenarios**
+
+- **SPA** — Authorization Code + PKCE (public client).
+- **Web app** — Authorization Code with a confidential client secret.
+- **Daemon / service** — Client Credentials (app-only token with app roles).
+- **CLI / device** — Device Code flow (RFC 8628).
+- **Token refresh** — rotating refresh tokens.
+- **Protected API + minimal Graph** — call `/me`, `/users`, `/groups` with the access token.
+
+**Protocol surface**
+
+- OIDC discovery (`.well-known/openid-configuration`) and JWKS.
+- `authorize`, `token`, `devicecode`, `userinfo`, and front-channel `logout`.
+- Real RS256-signed ID and access tokens, verifiable against the JWKS endpoint.
+- Minimal Microsoft Graph: read-only `/me`, `/users`, `/groups`.
+- Admin REST API + web portal to manage users, groups, and app registrations.
+
+### ❌ Not emulated
+
+- Multiple / real directories — a **single fixed tenant** only.
+- Implicit flow and ROPC (resource-owner password grant).
+- On-Behalf-Of (OBO), SAML 2.0, and WS-Federation.
+- MFA, Conditional Access, Identity Protection, and consent prompts (apps are **auto-consented**).
+- Certificate / `private_key_jwt` client authentication (client **secrets** only).
+- Full Microsoft Graph (writes and most resources) and advanced claims/token policies.
+
+See the [roadmap](specs/roadmap.md) for what may land in later iterations.
 
 ## How it works
 
@@ -216,31 +260,51 @@ Source layout: `src/` (server) with `config/` (zod validation), `tls/` (cert gen
 `helpers/`); `portal/` (admin portal, built in #12). Runtime state (SQLite DB + the persisted
 self-signed cert) lives under `data/` (gitignored).
 
-> **Browser e2e (`@azure/msal-browser` via Playwright)** is wired in the harness but gated
-> behind `E2E_BROWSER=1` until the interactive sign-in flow lands (#6), so `npm run test:e2e`
-> is green without a browser download.
+> **Browser e2e (`@azure/msal-browser` via Playwright)** is opt-in behind `E2E_BROWSER=1`, so
+> `npm run test:e2e` stays green without a browser download. Set it to exercise the real
+> interactive sign-in loop end-to-end in a headless browser.
 
 ## Documentation
 
 - 🗺️ **[Roadmap](specs/roadmap.md)** — iterations, MVP cut, dependencies, and deferred work.
 - 📋 **[Global specification](specs/global-spec.md)** — goals, architecture, API surface,
   token design, data model, configuration, deployment, and acceptance criteria.
+- 🤝 **[Contributing](CONTRIBUTING.md)** — how to propose changes (open an issue first) and the
+  project's governance.
 - 🧠 **[Decisions](memory/decisions.md)** / **[Conventions](memory/conventions.md)** —
   project memory.
 
 ## Project status & roadmap
 
-Entra Local is in early design. The current focus is **Iteration 1 (MVP)** in the
-[roadmap](specs/roadmap.md): the core Authorization Code + PKCE sign-in loop (plus Refresh
-Token and Client Credentials), UserInfo/Logout, minimal Graph, the admin portal, and
-`npm start` + Docker. Iteration 2 adds Device Code, optional password login, and
-single-executable packaging. Multi-tenant, OBO, broader Graph, and cert-based client auth
-are deferred.
+**Iteration 1 (MVP) is complete** and verified end-to-end against real MSAL clients:
+Authorization Code + PKCE sign-in, Client Credentials, Refresh Token, **Device Code**
+(RFC 8628), UserInfo/Logout, minimal Graph, the admin REST API + web portal, and all three
+run targets (`npm start`, Docker, and the single-file binary). Remaining work tracked in the
+[roadmap](specs/roadmap.md): optional password-login enforcement, MSAL sample apps
+(JS / React / Node CLI / .NET / Python), and a public developer-documentation pass.
+Multi-tenant, OBO, broader Graph, and certificate-based client auth remain deferred.
 
-## Security & seed data
+## Security & limitations
 
-Entra Local is a **development tool**, not a secure identity provider. It ships a deterministic,
-fixed-GUID seed directory so flows are reproducible in CI:
+Entra Local is a **development tool**, not a secure identity provider. It is **insecure by
+design** so it stays easy to run and reset:
+
+- **No authentication on the admin surface** — the portal and the `/admin/api/...` REST API are
+  fully open to anyone who can reach the port.
+- **Publicly known, seeded credentials** — fixed users, passwords, and app secrets ship in the
+  source (listed below) so flows are reproducible in CI.
+- **Self-signed TLS** — a certificate you must explicitly trust or bypass, in dev only.
+- **Signing keys stored unencrypted** on disk, to keep a stable `kid` across restarts.
+- **No MFA, Conditional Access, consent, rate limiting, or audit** — the sign-in page even
+  warns end users not to type a real password.
+- **A single, auto-consented directory** — every registered app is implicitly trusted.
+
+**Run it on `localhost` only.** Never point a real application or real secrets at it, and never
+expose it beyond your machine or an isolated local container.
+
+### Seed data
+
+It ships a deterministic, fixed-GUID seed directory so flows are reproducible in CI:
 
 - Default tenant `11111111-1111-1111-1111-111111111111` (`Entra Local`).
 - Users `alice@entralocal.dev` and `bob@entralocal.dev` (both members of the `Engineering` group),
@@ -250,10 +314,9 @@ fixed-GUID seed directory so flows are reproducible in CI:
   is the known dev value `daemon-app-secret`.
 
 These credentials are **intentionally public and dev-only**. Passwords and app secrets are stored
-hashed (scrypt) at rest, and refresh tokens are stored hashed (SHA-256) — but signing keys are
-persisted unencrypted for a stable `kid`. Never point a real application or real secrets at this
-emulator, and never expose it beyond localhost. Reset to a clean seed at any time via the store
-reset routine (admin endpoint lands in a later feature).
+hashed (scrypt) at rest, and refresh tokens and device codes are stored hashed (SHA-256) — but
+signing keys are persisted unencrypted for a stable `kid`. Reset to a clean seed at any time from
+the portal or the admin REST API (`/admin/api/...`).
 
 ## Disclaimer
 
@@ -264,4 +327,4 @@ local development and testing only.
 
 ## License
 
-To be determined.
+[MIT](LICENSE) © Christopher Maneu & Entra Local contributors.

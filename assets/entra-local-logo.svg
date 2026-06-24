@@ -1,0 +1,77 @@
+<svg width="1180" height="540" viewBox="40 340 1180 540" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Entra Local logo</title>
+  <desc id="desc">Editable SVG approximation of the Entra Local logo concept with layered blue app icon, terminal prompt symbol, and Entra Local wordmark.</desc>
+
+  <defs>
+    <linearGradient id="frontGradient" x1="124" y1="410" x2="410" y2="806" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5DD6F6"/>
+      <stop offset="0.48" stop-color="#159BF2"/>
+      <stop offset="1" stop-color="#0B65D8"/>
+    </linearGradient>
+
+    <linearGradient id="middleGradient" x1="266" y1="388" x2="478" y2="808" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1AA9FF"/>
+      <stop offset="0.55" stop-color="#0D72DE"/>
+      <stop offset="1" stop-color="#063EA8"/>
+    </linearGradient>
+
+    <linearGradient id="backGradient" x1="312" y1="438" x2="481" y2="820" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#154CC4"/>
+      <stop offset="1" stop-color="#061E7F"/>
+    </linearGradient>
+
+    <linearGradient id="panelGradient" x1="156" y1="468" x2="311" y2="705" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.94"/>
+      <stop offset="1" stop-color="#DDF4FF" stop-opacity="0.94"/>
+    </linearGradient>
+
+    <linearGradient id="promptGradient" x1="161" y1="533" x2="271" y2="644" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#149DEA"/>
+      <stop offset="1" stop-color="#056ED6"/>
+    </linearGradient>
+
+    <linearGradient id="shineGradient" x1="115" y1="410" x2="372" y2="612" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8EEBFF" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#8EEBFF" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="softShadow" x="65" y="355" width="445" height="510" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="22" stdDeviation="18" flood-color="#0046A8" flood-opacity="0.16"/>
+    </filter>
+
+    <filter id="subtleTypeShadow" x="530" y="560" width="670" height="140" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="2" stdDeviation="1.5" flood-color="#071A42" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <rect width="1254" height="1254" fill="#FFFFFF"/>
+
+  <!-- Icon group -->
+  <g filter="url(#softShadow)">
+    <!-- Back layer -->
+    <path d="M174 482C174 454.386 196.386 432 224 432H396C423.614 432 446 454.386 446 482V761C446 788.614 423.614 811 396 811H174C146.386 811 124 788.614 124 761V482Z" fill="url(#backGradient)" transform="translate(30 4)"/>
+
+    <!-- Middle layer -->
+    <path d="M162 439C162 411.386 184.386 389 212 389H357C384.614 389 407 411.386 407 439V733C407 760.614 384.614 783 357 783H162C134.386 783 112 760.614 112 733V439Z" fill="url(#middleGradient)" transform="translate(52 22)"/>
+
+    <!-- Front layer -->
+    <path d="M122.761 450.521L300.761 379.121C330.925 367.022 365.091 381.641 377.202 411.801L461.441 621.527C469.17 640.777 464.54 662.787 449.776 677.359L356.487 769.43C347.072 778.724 334.374 783.935 321.144 783.935H126C98.3858 783.935 76 761.549 76 733.935V496.933C76 476.517 88.7029 458.138 122.761 450.521Z" fill="url(#frontGradient)"/>
+
+    <!-- Glossy highlight -->
+    <path d="M122.761 450.521L300.761 379.121C330.925 367.022 365.091 381.641 377.202 411.801L386.389 434.678C307.958 445.442 216.977 486.342 76 627.847V496.933C76 476.517 88.7029 458.138 122.761 450.521Z" fill="url(#shineGradient)"/>
+
+    <!-- Foreground terminal panel -->
+    <path d="M159.275 450.026L269.61 410.085C293.144 401.568 318.98 414.211 326.724 438.011L370.784 573.429C376.1 589.77 370.767 607.701 357.179 618.218L269.661 685.966C260.881 692.764 249.966 696.206 238.886 695.671L164.198 692.064C139.048 690.849 119.249 670.076 119.249 644.897V497.288C119.249 476.532 134.452 456.405 159.275 450.026Z" fill="url(#panelGradient)"/>
+
+    <!-- Terminal prompt chevron -->
+    <path d="M168.5 532.5L198.5 578.5L168.5 624.5" stroke="url(#promptGradient)" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Terminal underscore -->
+    <path d="M222 634H269" stroke="url(#promptGradient)" stroke-width="15" stroke-linecap="round"/>
+  </g>
+
+  <!-- Wordmark -->
+  <g filter="url(#subtleTypeShadow)">
+    <text x="545" y="652" fill="#071A2F" font-family="Segoe UI, Inter, Arial, sans-serif" font-size="102" font-weight="600" letter-spacing="-2.6">Entra Local</text>
+  </g>
+</svg>
