@@ -112,6 +112,7 @@ jobs:
 
       - name: Derive image name (lowercase) and version tag
         id: meta
+        shell: bash
         run: |
           echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
           version="${{ github.event.release.tag_name }}"
@@ -127,6 +128,7 @@ jobs:
 
       - name: Tag and push image
         if: github.event_name == 'release'
+        shell: bash
         run: |
           image="${{ steps.meta.outputs.image }}"
           version="${{ steps.meta.outputs.version }}"
