@@ -258,9 +258,23 @@ The emulator serves HTTPS with an auto-generated, persisted **self-signed** cert
 (CN=`localhost`, SANs for `localhost`/`127.0.0.1`/`::1`), so clients must trust it or relax
 verification **in dev only**:
 
-- **Trust it (recommended):** import the cert into your OS/browser trust store. From source it
+- **Trust it with the built-in command (recommended):** the emulator can tell you exactly what to
+  run for your OS — or run it for you:
+
+  ```bash
+  npm start -- trust            # print the platform trust command + NODE_EXTRA_CA_CERTS hint
+  npm start -- trust --apply    # actually trust it (may prompt for elevation)
+  npm start -- untrust --apply  # remove it from the trust store
+  npm start -- cert-path        # print the path to cert.pem
+  npm start -- show-cert        # print the path + SHA-256 fingerprint
+  ```
+
+  From the single-file binary the same subcommands work directly (`entra-local trust`,
+  `entra-local cert-path`, …). By default `trust` only **prints** the command; `--apply` executes it.
+- **Trust it manually:** import the cert into your OS/browser trust store. From source it
   is `./data/tls/cert.pem`; from a container, copy it out with
-  `docker cp <container>:/app/data/tls/cert.pem ./cert.pem`.
+  `docker cp <container>:/app/data/tls/cert.pem ./cert.pem`, then run `trust --apply` (or your OS's
+  import step) **on the host** — a container's trust store is not your host's.
 - **Bypass it (dev only):** point your client's CA at that `cert.pem`, or set
   `NODE_TLS_REJECT_UNAUTHORIZED=0` for a Node client / `curl --insecure` for quick checks.
   Never disable verification for anything but local development.
