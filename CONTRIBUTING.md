@@ -63,11 +63,11 @@ Entra Local is **intentionally insecure** and exists only for local development 
 
 ## Development setup
 
-Prerequisites: **Node.js ≥ 22.5** (the persistence layer uses the built-in `node:sqlite`).
+Prerequisites: **Node.js ≥ 22.13** and **[pnpm](https://pnpm.io/) ≥ 9** (the persistence layer uses the built-in `node:sqlite`).
 
 ```bash
-npm install        # install dependencies
-npm run dev        # run the server with reload (tsx watch)
+pnpm install       # install dependencies
+pnpm run dev       # run the server with reload (tsx watch)
 ```
 
 Then browse to `https://localhost:8443/` (trust or bypass the self-signed cert — see the
@@ -78,18 +78,18 @@ Then browse to `https://localhost:8443/` (trust or bypass the self-signed cert �
 Your change must keep **all** of the following green:
 
 ```bash
-npm run lint       # eslint + prettier --check
-npm run typecheck  # tsc --noEmit across server + tests
-npm run build      # compile the server + build the portal
-npm test           # unit + integration tests (vitest, deterministic, in-process)
-npm run test:e2e   # real-MSAL end-to-end suite (starts a real HTTPS server)
+pnpm run lint       # eslint + prettier --check
+pnpm run typecheck  # tsc --noEmit across server + tests
+pnpm run build      # compile the server + build the portal
+pnpm test           # unit + integration tests (vitest, deterministic, in-process)
+pnpm run test:e2e   # real-MSAL end-to-end suite (starts a real HTTPS server)
 ```
 
 Optional, when your change touches packaging:
 
 ```bash
-npm run test:sea     # build + smoke-test the single-file binary
-npm run docker:build # build the container image
+pnpm run test:sea     # build + smoke-test the single-file binary
+pnpm run docker:build # build the container image
 ```
 
 CI runs the same gates — a PR that's red in CI won't be merged.

@@ -26,26 +26,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: npm run lint
+        run: pnpm run lint
 
       - name: Typecheck
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       - name: Unit + integration tests
-        run: npm test
+        run: pnpm test
 
   # Build the self-contained single-file binary on each OS (Node SEA does not cross-compile),
   # smoke-test it, and attach it to the published Release. Maps to feature #17's run target.
@@ -68,14 +71,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Use Node.js 24
         uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       # Stamp the published Release's tag into package.json so the shipped binary reports the real
       # release version at /health (and in the portal) instead of the in-repo placeholder. SEA
@@ -89,10 +95,10 @@ jobs:
           npm version "$version" --no-git-tag-version --allow-same-version
 
       - name: Build server + portal
-        run: npm run build
+        run: pnpm run build
 
       - name: Build single-file executable (Node SEA)
-        run: npm run build:sea
+        run: pnpm run build:sea
 
       - name: Smoke-test the binary
         run: npx vitest run --config vitest.config.ts test/integration/sea-packaging.test.ts

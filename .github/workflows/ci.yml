@@ -21,26 +21,29 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: npm run lint
+        run: pnpm run lint
 
       - name: Typecheck
-        run: npm run typecheck
+        run: pnpm run typecheck
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       - name: Unit + integration tests
-        run: npm test
+        run: pnpm test
 
       # Playwright browser is required by the e2e browser drivers once #6 lands;
       # cached here so the e2e job stays fast. Browser launch is gated behind
@@ -49,7 +52,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
@@ -72,7 +75,7 @@ jobs:
         run: python -m pip install --upgrade pip msal pyjwt cryptography requests
 
       - name: End-to-end (real-MSAL) tests
-        run: npm run test:e2e
+        run: pnpm run test:e2e
 
   # Full-stack SPA + API sample (#24): build the emulator, boot all three tiers (emulator + Express
   # API + Vite-preview SPA), then run the Playwright smoke that drives a real `@azure/msal-browser`
@@ -84,21 +87,24 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Use Node.js 24
         uses: actions/setup-node@v6
         with:
           node-version: '24'
-          cache: npm
+          cache: pnpm
 
       - name: Install emulator dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build emulator
-        run: npm run build
+        run: pnpm run build
 
       - name: Start emulator (seeded, TLS) on :8443
         run: |
-          nohup npm start > emulator.log 2>&1 &
+          nohup pnpm start > emulator.log 2>&1 &
           echo "EMULATOR_PID=$!" >> "$GITHUB_ENV"
           for i in $(seq 1 30); do
             if curl -ksS https://localhost:8443/health | grep -q '"status":"ok"'; then
@@ -159,21 +165,24 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Use Node.js 24
         uses: actions/setup-node@v6
         with:
           node-version: '24'
-          cache: npm
+          cache: pnpm
 
       - name: Install emulator dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build emulator
-        run: npm run build
+        run: pnpm run build
 
       - name: Start emulator (seeded, TLS) on :8443
         run: |
-          nohup npm start > emulator.log 2>&1 &
+          nohup pnpm start > emulator.log 2>&1 &
           echo "EMULATOR_PID=$!" >> "$GITHUB_ENV"
           for i in $(seq 1 30); do
             if curl -ksS https://localhost:8443/health | grep -q '"status":"ok"'; then
