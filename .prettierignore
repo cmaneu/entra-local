@@ -6,6 +6,7 @@ data/
 portal/dist/*
 !portal/dist/index.html
 package-lock.json
+pnpm-lock.yaml
 specs/
 memory/
 brand/
