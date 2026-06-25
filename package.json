@@ -9,6 +9,9 @@
     "node": ">=22.13"
   },
   "main": "dist/index.js",
+  "bin": {
+    "entra-local": "dist/index.js"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "dev:portal": "vite --config portal/vite.config.ts",

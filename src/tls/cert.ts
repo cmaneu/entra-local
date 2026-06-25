@@ -18,6 +18,14 @@ export function certFingerprint(certPem: string): string {
 }
 
 /**
+ * SHA-1 thumbprint of a PEM certificate, without separators (e.g. `ABCD…`). Used to match the cert
+ * for removal from the Windows certificate store (`certutil -delstore … <thumbprint>`).
+ */
+export function certThumbprint(certPem: string): string {
+  return new X509Certificate(certPem).fingerprint.replaceAll(':', '');
+}
+
+/**
  * Generate a self-signed certificate for local HTTPS.
  *
  * NOTE: `node:crypto` can generate keypairs but cannot create/sign an X.509 certificate, so
@@ -90,4 +98,22 @@ export function resolveTlsMaterial(config: Config): TlsMaterial | null {
   writeFileSync(keyPath, material.key, { encoding: 'utf8', mode: 0o600 });
   restrictKeyPerms(keyPath);
   return material;
+}
+
+/**
+ * Absolute path of the certificate clients must trust, generating + persisting the auto-cert on
+ * first call so the path is always valid. Throws when TLS is disabled (nothing to trust).
+ *  - both `TLS_CERT`/`TLS_KEY` set → the provided cert path.
+ *  - otherwise → `<TLS_CERT_DIR>/cert.pem`, generated on first call.
+ */
+export function resolveCertPath(config: Config): string {
+  if (!config.tls.enabled) {
+    throw new Error('TLS is disabled (TLS_ENABLED=false) — there is no certificate to trust.');
+  }
+  if (config.tls.certPath && config.tls.keyPath) {
+    return resolve(config.tls.certPath);
+  }
+  // Ensure the auto-cert exists (generates + persists on first call).
+  resolveTlsMaterial(config);
+  return join(resolve(config.tls.certDir), CERT_FILE);
 }
