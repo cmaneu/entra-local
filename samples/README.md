@@ -19,10 +19,11 @@ Seeded users (dev-only credentials): `alice@entralocal.dev` / `bob@entralocal.de
 
 | Sample                                                   | Stack                                  | What it demonstrates                                                                 |
 | -------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------- |
+| [`node-cli/`](./node-cli/README.md)                      | `@azure/msal-node` console app          | The **Device Authorization Grant** (RFC 8628) for a browserless CLI: a public client (app `…0001`) prints a code, you approve in a browser, and it calls Microsoft Graph `/me`. |
 | [`fullstack-spa-api/`](./fullstack-spa-api/README.md)    | `@azure/msal-browser` SPA + Express API | A SPA (app `…0004`) acquiring a delegated token **for a separate API app** (`…0005`) and the API validating it — the canonical "SPA → protected API" flow, one app registration per tier. |
 
-> More samples (vanilla/React SPA, Node web/daemon/CLI, .NET console, Python console) are specified
-> under [`../specs/`](../specs/) and will land alongside this one.
+> More samples (vanilla/React SPA, Node web/daemon, .NET console, Python console) are specified
+> under [`../specs/`](../specs/) and will land alongside these.
 
 ## Conventions
 

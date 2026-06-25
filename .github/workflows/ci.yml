@@ -149,6 +149,56 @@ jobs:
         if: always()
         run: kill "$EMULATOR_PID" "$API_PID" "$SPA_PID" 2>/dev/null || true
 
+  # Node CLI device-code sample (#19, node-cli): build + start the emulator, then run the headless
+  # device-code smoke. The smoke spawns the real CLI (`tsx src/cli.ts`), reads the user code it
+  # prints, approves it as the seeded user Alice via the emulator's approval endpoint, and asserts
+  # the CLI minted a Graph-audience token (scp ⊇ User.Read) and that GET /graph/v1.0/me returned
+  # Alice's profile. Also asserts the sample README is present (documentation acceptance criterion).
+  node-cli-sample:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install emulator dependencies
+        run: npm ci
+
+      - name: Build emulator
+        run: npm run build
+
+      - name: Start emulator (seeded, TLS) on :8443
+        run: |
+          nohup npm start > emulator.log 2>&1 &
+          echo "EMULATOR_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 30); do
+            if curl -ksS https://localhost:8443/health | grep -q '"status":"ok"'; then
+              echo "emulator healthy"; exit 0
+            fi
+            sleep 2
+          done
+          echo "emulator did not become healthy"; cat emulator.log; exit 1
+
+      - name: Install sample dependencies
+        working-directory: samples/node-cli
+        run: npm ci
+
+      - name: Assert the sample README is present
+        run: test -f samples/node-cli/README.md
+
+      - name: Run the device-code smoke (headless approval)
+        env:
+          NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/data/tls/cert.pem
+        run: node samples/node-cli/smoke.mjs
+
+      - name: Tear down background services
+        if: always()
+        run: kill "$EMULATOR_PID" 2>/dev/null || true
+
   # Run-targets (#14): prove the hardened image actually builds, runs as the published port is
   # reachable from the HOST (HOST=0.0.0.0), the HEALTHCHECK goes healthy, env passthrough works,
   # and the data volume persists the DB + auto-generated cert across a stop/start. Maps to
