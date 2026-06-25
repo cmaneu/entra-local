@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
@@ -161,6 +161,20 @@ suite('#17 single-executable binary smoke test', () => {
     const doc = JSON.parse(res.body) as { issuer: string; jwks_uri: string };
     expect(doc.issuer).toMatch(/^https:\/\//);
     expect(doc.jwks_uri).toMatch(/^https:\/\//);
+  });
+
+  it('exposes the cert-path subcommand (#25)', () => {
+    const out = execFileSync(EXE_PATH, ['cert-path'], {
+      cwd: dataDir,
+      env: {
+        ...process.env,
+        CONFIG_FILE: noConfigFile,
+        TLS_ENABLED: 'true',
+        TLS_CERT_DIR: certDir,
+      },
+      encoding: 'utf8',
+    });
+    expect(out).toContain('cert.pem');
   });
 });
 
