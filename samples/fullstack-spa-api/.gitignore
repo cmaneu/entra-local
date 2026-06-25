@@ -1,0 +1,2 @@
+# Local emulator data written by the optional `docker compose up` (DB + dev TLS cert).
+.emulator-data/

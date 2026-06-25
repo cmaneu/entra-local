@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Entra Local — Full-stack sample (SPA)</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <h1>Entra Local — Full-stack sample</h1>
+      <p class="subtitle">
+        A <code>@azure/msal-browser</code> SPA (app <code>…0004</code>) that signs in against the
+        emulator and calls a protected Express API (app <code>…0005</code>) with a delegated access
+        token.
+      </p>
+
+      <section class="card">
+        <div class="row">
+          <button id="signin" data-testid="signin" type="button">Sign in</button>
+          <button id="signout" data-testid="signout" type="button" hidden>Sign out</button>
+          <button id="load-todos" data-testid="load-todos" type="button" disabled>
+            Load todos
+          </button>
+        </div>
+        <p id="status" data-testid="status" class="status">Not signed in.</p>
+      </section>
+
+      <section class="card" id="account-card" hidden>
+        <h2>Signed-in account</h2>
+        <p id="account" data-testid="account"></p>
+      </section>
+
+      <section class="card" id="todos-card" hidden>
+        <h2>Protected todos (from the API)</h2>
+        <pre id="todos" data-testid="todos"></pre>
+      </section>
+
+      <section class="card" id="claims-card" hidden>
+        <h2>Access-token claims</h2>
+        <p>These come from the token the SPA sent — note <code>aud</code> is the API app.</p>
+        <pre id="claims" data-testid="claims"></pre>
+        <h3>Claims the API echoed back</h3>
+        <pre id="api-caller" data-testid="api-caller"></pre>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

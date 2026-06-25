@@ -74,6 +74,81 @@ jobs:
       - name: End-to-end (real-MSAL) tests
         run: npm run test:e2e
 
+  # Full-stack SPA + API sample (#24): build the emulator, boot all three tiers (emulator + Express
+  # API + Vite-preview SPA), then run the Playwright smoke that drives a real `@azure/msal-browser`
+  # sign-in and asserts the happy path (200, aud=API app, scp contains access_as_user) plus the
+  # 401 (no/garbage token) and 403 (valid token, wrong scope) negative paths. Also asserts the
+  # sample README is present (documentation acceptance criterion).
+  samples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install emulator dependencies
+        run: npm ci
+
+      - name: Build emulator
+        run: npm run build
+
+      - name: Start emulator (seeded, TLS) on :8443
+        run: |
+          nohup npm start > emulator.log 2>&1 &
+          echo "EMULATOR_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 30); do
+            if curl -ksS https://localhost:8443/health | grep -q '"status":"ok"'; then
+              echo "emulator healthy"; exit 0
+            fi
+            sleep 2
+          done
+          echo "emulator did not become healthy"; cat emulator.log; exit 1
+
+      - name: Build & start the sample API on :4000
+        working-directory: samples/fullstack-spa-api/api
+        env:
+          NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/data/tls/cert.pem
+        run: |
+          npm ci
+          nohup npm start > api.log 2>&1 &
+          echo "API_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 30); do
+            if curl -sS http://localhost:4000/health | grep -q '"status":"ok"'; then
+              echo "api healthy"; exit 0
+            fi
+            sleep 2
+          done
+          echo "api did not become healthy"; cat api.log; exit 1
+
+      - name: Build & start the sample SPA on :5173
+        working-directory: samples/fullstack-spa-api/spa
+        run: |
+          npm ci
+          npm run build
+          nohup npm run preview > spa.log 2>&1 &
+          echo "SPA_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 30); do
+            if curl -sS http://localhost:5173/ | grep -q '<title>'; then
+              echo "spa up"; exit 0
+            fi
+            sleep 2
+          done
+          echo "spa did not start"; cat spa.log; exit 1
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the full-stack smoke (200 / 401 / 403)
+        run: node samples/fullstack-spa-api/smoke.mjs
+
+      - name: Tear down background services
+        if: always()
+        run: kill "$EMULATOR_PID" "$API_PID" "$SPA_PID" 2>/dev/null || true
+
   # Run-targets (#14): prove the hardened image actually builds, runs as the published port is
   # reachable from the HOST (HOST=0.0.0.0), the HEALTHCHECK goes healthy, env passthrough works,
   # and the data volume persists the DB + auto-generated cert across a stop/start. Maps to

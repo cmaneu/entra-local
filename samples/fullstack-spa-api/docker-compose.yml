@@ -1,0 +1,29 @@
+# Optional: launch ONLY the Entra Local emulator for this sample.
+#
+# The SPA and API still run with their normal npm commands (kept consistent with the other
+# samples). This compose file just saves you from starting the emulator separately.
+#
+# Usage:
+#   docker compose up -d            # build + start the emulator on https://localhost:8443
+#   # → the dev certificate is written to ./.emulator-data/tls/cert.pem on the host.
+#   docker compose down             # stop it (add -v to also wipe ./.emulator-data)
+#
+# Then point the API at the mounted certificate:
+#   # from samples/fullstack-spa-api/api
+#   $env:NODE_EXTRA_CA_CERTS = "../.emulator-data/tls/cert.pem"   # PowerShell
+#   export NODE_EXTRA_CA_CERTS=../.emulator-data/tls/cert.pem      # bash/zsh
+
+services:
+  emulator:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: entra-local
+    ports:
+      - '8443:8443'
+    volumes:
+      # Persists the SQLite DB + TLS cert; exposes cert.pem to the host for the API's JWKS trust.
+      - ./.emulator-data:/app/data
+    environment:
+      # Seed the deterministic demo directory (incl. this sample's …0004 / …0005 apps) on first boot.
+      SEED_ON_START: 'true'

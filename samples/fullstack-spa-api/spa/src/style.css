@@ -1,0 +1,95 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+  padding: 2rem;
+  background: #f5f6f8;
+  color: #1b1b1f;
+}
+
+.app {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+h1 {
+  margin-bottom: 0.25rem;
+}
+
+.subtitle {
+  margin-top: 0;
+  color: #555;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e2e4e9;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin: 1rem 0;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+button {
+  font: inherit;
+  padding: 0.5rem 1rem;
+  border: 1px solid #0a6cff;
+  background: #0a6cff;
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button#signout {
+  background: #fff;
+  color: #0a6cff;
+}
+
+.status {
+  margin-bottom: 0;
+  color: #444;
+}
+
+.status.error {
+  color: #b00020;
+  font-weight: 600;
+}
+
+pre {
+  background: #0d1117;
+  color: #e6edf3;
+  padding: 0.75rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.85rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #16171a;
+    color: #e6edf3;
+  }
+  .card {
+    background: #1f2127;
+    border-color: #2c2f36;
+  }
+  .subtitle,
+  .status {
+    color: #9aa0aa;
+  }
+}

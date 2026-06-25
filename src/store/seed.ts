@@ -22,6 +22,24 @@ export const SEED = {
   spaRedirectUri: 'https://localhost:3000',
   spaScopeValue: 'access_as_user',
   daemonRoleValue: 'Tasks.Read.All',
+  /**
+   * Full-stack sample (#24): a dedicated front-end SPA app and a separate back-end API resource
+   * app. The SPA requests `api://<appApiId>/access_as_user`, so the minted access token's `aud` is
+   * the API app and the Express API validates it against the emulator JWKS. One registration per
+   * tier — these are distinct from the generic `appSpaId`/`appDaemonId` above.
+   */
+  appSpaFrontId: 'cccccccc-0000-0000-0000-000000000004',
+  appApiId: 'cccccccc-0000-0000-0000-000000000005',
+  apiScopeId: 'dddddddd-0000-0000-0000-000000000002',
+  apiScopeValue: 'access_as_user',
+  /**
+   * A second delegated scope on the API app. The Express API authorizes `/api/todos` on
+   * `access_as_user` only, so a token carrying just `access_as_admin` has the right `aud` but the
+   * wrong `scp` — the sample uses it to demonstrate (and CI-smoke) the `403 insufficient_scope` path.
+   */
+  apiAdminScopeId: 'dddddddd-0000-0000-0000-000000000003',
+  apiAdminScopeValue: 'access_as_admin',
+  spaFrontRedirectUri: 'http://localhost:5173',
   /** Known dev-only credentials. */
   userPassword: 'Password1!',
   daemonSecret: 'daemon-app-secret',
@@ -170,6 +188,58 @@ export function seed(db: Database, clock: Clock, options: SeedOptions): SeedResu
       SEED.appDaemonId,
       SEED.daemonRoleValue,
       'Read all tasks',
+    );
+
+    // Full-stack sample (#24) — front SPA app: redirect on its own port, no exposed scope of its
+    // own (it consumes the API app's scope).
+    run(
+      `INSERT OR IGNORE INTO app_registrations
+         (app_id, tenant_id, display_name, is_confidential, app_id_uri, created_at)
+       VALUES (?, ?, ?, 0, ?, ?)`,
+      SEED.appSpaFrontId,
+      options.tenantId,
+      'Sample Full-stack SPA',
+      `api://${SEED.appSpaFrontId}`,
+      now,
+    );
+    run(
+      `INSERT OR IGNORE INTO app_redirect_uris (app_id, uri, type) VALUES (?, ?, ?)`,
+      SEED.appSpaFrontId,
+      SEED.spaFrontRedirectUri,
+      'spa',
+    );
+
+    // Full-stack sample (#24) — back API resource app: public (no secret), exposes `access_as_user`.
+    // The SPA requests `api://<appApiId>/access_as_user`, so the access token's `aud` = this app.
+    run(
+      `INSERT OR IGNORE INTO app_registrations
+         (app_id, tenant_id, display_name, is_confidential, app_id_uri, created_at)
+       VALUES (?, ?, ?, 0, ?, ?)`,
+      SEED.appApiId,
+      options.tenantId,
+      'Sample Full-stack API',
+      `api://${SEED.appApiId}`,
+      now,
+    );
+    run(
+      `INSERT OR IGNORE INTO app_scopes
+         (id, app_id, value, admin_consent_display_name, is_enabled)
+       VALUES (?, ?, ?, ?, 1)`,
+      SEED.apiScopeId,
+      SEED.appApiId,
+      SEED.apiScopeValue,
+      'Access the Sample API as the signed-in user',
+    );
+    // Second exposed scope: the SPA can hold it, but `/api/todos` requires `access_as_user`, so a
+    // token with only this scope yields `403 insufficient_scope` (right `aud`, wrong `scp`).
+    run(
+      `INSERT OR IGNORE INTO app_scopes
+         (id, app_id, value, admin_consent_display_name, is_enabled)
+       VALUES (?, ?, ?, ?, 1)`,
+      SEED.apiAdminScopeId,
+      SEED.appApiId,
+      SEED.apiAdminScopeValue,
+      'Access the Sample API with administrative scope',
     );
 
     return { inserted };
