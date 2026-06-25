@@ -133,7 +133,13 @@ jobs:
       - name: Build & start the sample SPA on :5173
         working-directory: samples/fullstack-spa-api/spa
         run: |
-          npm ci
+          # No install step needed: the root `pnpm install --frozen-lockfile`
+          # already placed vite, rollup, and @rollup/rollup-linux-x64-gnu in the
+          # root node_modules.  The npm workspace lockfile was generated on macOS
+          # and omits the Linux rollup binary; npm also silently skips packages
+          # with the `libc` field (https://github.com/npm/cli/issues/4828), so
+          # `npm ci` would fail the build.  Node's module resolution traverses up
+          # to the root node_modules, so the build works without a local install.
           npm run build
           nohup npm run preview > spa.log 2>&1 &
           echo "SPA_PID=$!" >> "$GITHUB_ENV"
