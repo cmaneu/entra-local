@@ -171,23 +171,23 @@ volumes:
 > publish it on an untrusted network or the public internet.
 
 > 🛠️ **Contributors** can build the image locally instead of pulling it:
-> `docker build -t entra-local .` (or `npm run docker:build && npm run docker:run`).
+> `docker build -t entra-local .` (or `pnpm run docker:build && pnpm run docker:run`).
 
-### 2. From source (`npm start`)
+### 2. From source (`pnpm start`)
 
 ```bash
-npm install      # install dependencies
-npm run build    # compile the server (dist/) + build the admin portal (single-file)
-npm start        # run the built server: node dist/index.js
+pnpm install     # install dependencies
+pnpm run build   # compile the server (dist/) + build the admin portal (single-file)
+pnpm start       # run the built server: node dist/index.js
 # Portal:    https://localhost:8443/
 # Health:    https://localhost:8443/health        -> {"status":"ok", ...}
 # Discovery: https://localhost:8443/{tenantId}/v2.0/.well-known/openid-configuration
 ```
 
-`npm start` runs the **built** server, so run `npm run build` first (a guard aborts with a
+`pnpm start` runs the **built** server, so run `pnpm run build` first (a guard aborts with a
 clear message if `dist/` or the portal bundle is missing). State (the SQLite DB at `DB_PATH`
 and the TLS cert/key under `TLS_CERT_DIR`) persists under `./data/` and survives restarts.
-For an auto-reloading dev loop instead, use `npm run dev`.
+For an auto-reloading dev loop instead, use `pnpm run dev`.
 
 ### 3. Single-file binary (Node SEA)
 
@@ -198,13 +198,13 @@ dependencies, the admin portal, and the version metadata are bundled/embedded in
 Persistence uses the built-in `node:sqlite`, so there are **no native bindings** to ship.
 
 ```bash
-npm run build       # compile the server + the single-file portal (prerequisite)
-npm run build:sea   # bundle (esbuild) -> embed assets -> inject the SEA blob (postject)
+pnpm run build       # compile the server + the single-file portal (prerequisite)
+pnpm run build:sea   # bundle (esbuild) -> embed assets -> inject the SEA blob (postject)
 # -> dist-sea/entra-local       (Linux/macOS)
 # -> dist-sea/entra-local.exe   (Windows)
 ```
 
-Run it like any other binary; it reads the **same** env/config keys as `npm start` and writes
+Run it like any other binary; it reads the **same** env/config keys as `pnpm start` and writes
 the **same** `data/` layout (SQLite DB + auto-generated TLS cert) relative to its working
 directory:
 
@@ -228,9 +228,9 @@ directory:
   "signature seems corrupted" notice on Windows because it invalidates Node's original
   signature). This is a developer tool — do not redistribute the unsigned binary as a trusted
   release.
-- **Smoke-test it:** `npm run test:sea` builds the binary and runs an automated check that it
+- **Smoke-test it:** `pnpm run test:sea` builds the binary and runs an automated check that it
   boots over HTTPS, serves `/health` (with the embedded version), the portal at `/`, and OIDC
-  discovery. The same test also runs (gated on the binary existing) in `npm test`.
+  discovery. The same test also runs (gated on the binary existing) in `pnpm test`.
 
 ### Published releases
 
@@ -262,11 +262,11 @@ verification **in dev only**:
   run for your OS — or run it for you:
 
   ```bash
-  npm start -- trust            # print the platform trust command + NODE_EXTRA_CA_CERTS hint
-  npm start -- trust --apply    # actually trust it (may prompt for elevation)
-  npm start -- untrust --apply  # remove it from the trust store
-  npm start -- cert-path        # print the path to cert.pem
-  npm start -- show-cert        # print the path + SHA-256 fingerprint
+  pnpm start -- trust            # print the platform trust command + NODE_EXTRA_CA_CERTS hint
+  pnpm start -- trust --apply    # actually trust it (may prompt for elevation)
+  pnpm start -- untrust --apply  # remove it from the trust store
+  pnpm start -- cert-path        # print the path to cert.pem
+  pnpm start -- show-cert        # print the path + SHA-256 fingerprint
   ```
 
   From the single-file binary the same subcommands work directly (`entra-local trust`,
@@ -300,18 +300,19 @@ fetch the discovery document and JWKS over HTTPS.
 ## Development
 
 The toolchain and project layout are established by roadmap feature #1
-([spec](specs/2026-06-22_01-server-config-tls-foundation.md)). Node **22.5+** is required
-(the persistence layer uses the built-in `node:sqlite`).
+([spec](specs/2026-06-22_01-server-config-tls-foundation.md)). Node **22.13+** and
+**[pnpm](https://pnpm.io/) ≥ 9** are required (the persistence layer uses the built-in
+`node:sqlite`).
 
 ```bash
-npm install        # install dependencies
-npm run dev        # run the server with reload (tsx watch)
-npm run build      # type-check + emit server to dist/ (+ portal placeholder)
-npm run typecheck  # tsc --noEmit across server + tests
-npm run lint       # eslint + prettier --check
-npm test           # unit + integration tests (vitest, in-process, deterministic)
-npm run test:e2e   # real-MSAL end-to-end suite (starts a real HTTPS server)
-npm start          # run the built server (node dist/index.js)
+pnpm install        # install dependencies
+pnpm run dev        # run the server with reload (tsx watch)
+pnpm run build      # type-check + emit server to dist/ (+ portal placeholder)
+pnpm run typecheck  # tsc --noEmit across server + tests
+pnpm run lint       # eslint + prettier --check
+pnpm test           # unit + integration tests (vitest, in-process, deterministic)
+pnpm run test:e2e   # real-MSAL end-to-end suite (starts a real HTTPS server)
+pnpm start          # run the built server (node dist/index.js)
 ```
 
 Configuration is loaded from environment variables → `entra-local.config.json` → built-in
@@ -326,7 +327,7 @@ Source layout: `src/` (server) with `config/` (zod validation), `tls/` (cert gen
 self-signed cert) lives under `data/` (gitignored).
 
 > **Browser e2e (`@azure/msal-browser` via Playwright)** is opt-in behind `E2E_BROWSER=1`, so
-> `npm run test:e2e` stays green without a browser download. Set it to exercise the real
+> `pnpm run test:e2e` stays green without a browser download. Set it to exercise the real
 > interactive sign-in loop end-to-end in a headless browser.
 
 ## Documentation
