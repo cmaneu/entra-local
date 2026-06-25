@@ -6,19 +6,19 @@
 # `--experimental-sqlite` flag (locked decision).
 ARG NODE_IMAGE=node:24-slim
 
-# --- Stage 1: build the server + the single-file admin portal (needs devDeps via `npm ci`). ---
+# --- Stage 1: build the server + the single-file admin portal (needs devDeps via pnpm). ---
 FROM ${NODE_IMAGE} AS build
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN corepack enable && pnpm install --frozen-lockfile
 COPY . .
 RUN npm run build
 
 # --- Stage 2: resolve production-only dependencies (no react/vite/test toolchain). ---
 FROM ${NODE_IMAGE} AS deps
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN corepack enable && pnpm install --frozen-lockfile --prod
 
 # --- Stage 3: lean, non-root runtime. Carries only what the server needs at runtime: the
 #     compiled server (dist/), the prebuilt portal asset (portal/dist/index.html, served as a
