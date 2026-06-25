@@ -73,3 +73,64 @@ passed as a **lazy thunk** (esbuild empties `import.meta.url` in the CJS/SEA bun
 (`dist-sea/`, `*.exe`, `*.blob`) are git/docker/prettier-ignored and never part of the Docker
 image; `esbuild`/`postject` stay in devDependencies. Build per OS (`npm run build:sea`) — SEA
 does not cross-compile; the dev binary is unsigned.
+
+### Sample apps (`samples/`, Iteration 3 — specs `2026-06-25_18..21,24`)
+All MSAL sample apps live under a top-level `samples/` folder, one subfolder per sample
+(`js-spa/`, `react-spa/`, `node-web/`, `node-daemon/`, `node-cli/`, `dotnet-console/`,
+`python-console/`, `fullstack-spa-api/{spa,api}/`). Conventions:
+
+- **Standalone, not workspaces.** Each JS/Node sample is its own npm project (own
+  `package.json`/lockfile); .NET/Python samples are self-contained (`dotnet` project /
+  `pyproject.toml` + `uv`). `samples/**` build/dependency output (`node_modules`, `dist`, `bin`,
+  `obj`, `.venv`, `__pycache__`) is git/prettier/docker-ignored and excluded from the server
+  tsconfig/eslint — samples never enter the emulator build/lint/typecheck.
+- **One-command run.** Each sample documents a single primary command with working defaults baked
+  in (the seeded GUIDs + `https://localhost:8443`): npm (`npm run dev`/`npm start`) for JS/Node,
+  `dotnet run` for .NET, `uv run` for Python. Emulator origin overridable via `EMULATOR_ORIGIN` /
+  `VITE_EMULATOR_ORIGIN`.
+- **Own port + seeded redirect.** Every sample runs on its own port with its own **seeded**
+  redirect URI (loopback `http://localhost:<port>` — only the emulator is HTTPS). The canonical
+  port + app-registration map is owned by spec #18.
+- **Token audience matches protected API.** Samples that call the emulator's built-in Graph
+  endpoints (`GET /graph/v1.0/me`, `/users`, `/groups`) request **Graph-audience** tokens
+  (`User.Read` for delegated `/me`, `https://graph.microsoft.com/.default` for daemon reads).
+  Tokens for custom `api://...` resources are not accepted by Graph; the custom-resource pattern is
+  demonstrated by #24's Express API.
+- **Seed-backed app IDs.** Deterministic app IDs come from `src/store/seed.ts` (the admin REST
+  `POST /api/apps` server-generates `appId`). New fixed-GUID seed apps: `…0003` (confidential web,
+  #19), `…0004` (full-stack SPA front, #24), `…0005` (full-stack API exposing `access_as_user`,
+  #24); plus added per-port redirect URIs on `…0001`. Additions are additive/idempotent
+  (`INSERT OR IGNORE`) with the seed integration test extended; no schema/protocol change. New
+  dev-only GUIDs/secrets are added to the README seed/security list.
+- **README completeness + README-only cert trust.** Each sample README documents what the sample
+  demonstrates, prerequisites/setup, the one-command run, a full env-var/config table with defaults,
+  the app registration + port used, exact endpoint paths, expected token claims, certificate trust,
+  non-default emulator configuration, troubleshooting, and optional compose. `samples/README.md`
+  indexes every sample. Cert trust stays README-only (`NODE_EXTRA_CA_CERTS`,
+  `REQUESTS_CA_BUNDLE`, MSAL.NET in-process `HttpClientFactory` cert pin, browser trust store) — no
+  helper scripts. CI asserts README files exist.
+- **Required CI smoke.** A `samples` CI job builds and smoke-runs **every** sample against a
+  freshly-seeded emulator. Browser/Node samples assert JWKS-verifiable tokens + successful protected
+  calls. .NET/Python interactive console samples use explicit CI-safe `--smoke` modes that verify
+  build/config, authority/discovery/JWKS/cert trust, and README presence without launching an
+  external system browser. Reuses #13's runtime provisioning (.NET SDK, Python) plus
+  `astral-sh/setup-uv`; smokes skip cleanly when a runtime is unavailable locally but are required
+  in CI.
+- **Optional emulator compose.** Each sample ships an optional `docker-compose.yml` that launches
+  the emulator (`ghcr.io/cmaneu/entra-local:latest`, port 8443, named volume) so a developer can
+  start the IdP with `docker compose up -d`; the sample itself still runs via its one-command
+  script.
+- **Separate-API-app pattern (#24).** The full-stack sample uses one app registration per tier:
+  the SPA (`…0004`) requests `api://…0005/access_as_user`, so the access token's `aud` is the API
+  app (`…0005`) and `scp` is `access_as_user`; the Express API validates with `jose`
+  (`createRemoteJWKSet` + `jwtVerify`) against the JWKS, the concrete-GUID `iss`, `aud`, and `scp`.
+  This works with no protocol change (per-app App ID URI + exposed scopes, `scopesAreValid`,
+  `resolveAudience`).
+- **CLI subcommands live in `src/cli/` behind the server boot (#25).** `src/index.ts` dispatches a
+  recognised first argv token (`trust`/`untrust`/`cert-path`/`show-cert`/`help`) to
+  `runCli`; anything else (incl. no token) boots the server via `startServer()`. New management
+  commands go in `src/cli/` and return a process exit code (config/cert errors → stderr + exit 1).
+  Subcommands are inherited by every run target — `npm start -- <cmd>`, the Docker image, and the
+  SEA binary (entry `dist/index.js`) — plus `npx entra-local <cmd>` via the `bin` field. Unlike the
+  README-only **sample** cert-trust convention, the emulator's own cert trust IS automated here via
+  the `trust` command (print by default, `--apply` to execute; arg-array `execFileSync`, no shell).

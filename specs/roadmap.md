@@ -74,6 +74,7 @@ reaching the full v1.0 acceptance bar in [`global-spec.md` §15](global-spec.md#
 | 15 | Device Code flow | `/devicecode` + user-code approval page (RFC 8628) for CLI/device apps | ✓ | 5, 6 | ✅ |
 | 16 | Optional password login enforcement | `REQUIRE_PASSWORD` username+password login instead of account picker | ✓ | 6 | ⬜ |
 | 17 | Single-executable packaging | Self-contained binary bundling runtime, portal assets, migrations | – | 14 | ✅ |
+| 25 | Trust-cert CLI command | `trust`/`untrust`/`cert-path`/`show-cert` subcommands to trust the dev cert (print by default, `--apply` to execute); exposed by the SEA binary | – | 1, 14, 17 | ✅ |
 
 ## Iteration 3 — Sample applications
 **Outcome:** minimal, runnable MSAL sample apps across the major platforms that authenticate
@@ -83,12 +84,28 @@ prerequisite for the Iteration 1-2 e2e tests, which use inline MSAL drivers from
 harness. All live under a top-level `samples/` folder, each with its own README and a
 one-command run.
 
+**Cross-sample conventions (per-feature specs `2026-06-25_18..21,24`):** each sample runs on its
+**own port** with its **own seeded redirect URI**; every sample has a **README** covering config,
+setup, the one-command run, app registration/port, cert trust, endpoint paths, troubleshooting, and
+optional compose; certificate trust is documented in the **README only** (no helper scripts);
+**every** sample gets a **CI build/smoke** step; and each sample ships an **optional
+`docker-compose.yml`** that launches the emulator (`ghcr.io/cmaneu/entra-local`). Built-in Graph
+calls use **Graph-audience** tokens (`User.Read` / `https://graph.microsoft.com/.default`); the
+custom `api://.../access_as_user` audience pattern is demonstrated by the full-stack #24 Express
+API. Because
+deterministic app IDs can only come from seed data (the admin REST API server-generates `appId`),
+the samples add a small set of **additive, fixed-GUID seed apps + per-port redirect URIs** to
+`src/store/seed.ts` (the only server-side change — no protocol change). Feature **#18 owns** the
+shared samples infrastructure (layout, port + app map, seed additions, CI smoke, compose) that the
+other sample specs reference.
+
 | # | Feature | Description | UI | Dependencies | Status |
 |---|---------|-------------|----|--------------|--------|
 | 18 | JS & React SPA samples | Vanilla `msal-browser` SPA + `msal-react` SPA doing Auth Code + PKCE (with silent renewal) | ✓ | 6, 7, 13 | ⬜ |
 | 19 | Node samples (`msal-node`) | Confidential web app (auth code), daemon (client credentials), and a **Node.js CLI** (device code) | – | 6, 8, 13, 15 | ⬜ |
-| 20 | .NET sample (MSAL.NET) | Console/web Auth Code sample; reuses the .NET toolchain/CI provisioned in #13 | – | 6, 13 | ⬜ |
-| 21 | Python sample (MSAL Python) | Console/web Auth Code sample; reuses the Python toolchain/CI provisioned in #13 | – | 6, 13 | ⬜ |
+| 20 | .NET sample (MSAL.NET) | Console Auth Code sample (`dotnet run`); reuses the .NET toolchain/CI provisioned in #13 | – | 6, 13 | ⬜ |
+| 21 | Python sample (MSAL Python) | Console Auth Code sample (`uv run`); reuses the Python toolchain/CI provisioned in #13 | – | 6, 13 | ⬜ |
+| 24 | Full-stack SPA + protected API | JS SPA (`msal-browser`) calling a Node/**Express** resource API, **one app registration per tier** (front SPA app + back API app exposing a scope); the API validates the access token (JWKS/`iss`/`aud`/`scp`). Adds two fixed-GUID **seed** apps; no protocol change | ✓ | 3, 6, 7, 13, 18 | ✅ |
 
 ## Iteration 4 — Public developer documentation
 **Outcome:** published, developer-facing documentation so external developers can adopt the
@@ -97,7 +114,7 @@ assume Iterations 1-2 are ✅ (every documented endpoint and config option exist
 
 | # | Feature | Description | UI | Dependencies | Status |
 |---|---------|-------------|----|--------------|--------|
-| 22 | Getting started & MSAL integration guides | Install/run, trust the cert, and per-platform "point MSAL here" guides (JS, React, Node, .NET, Python) | ✓ | 18, 19, 20, 21 | ⬜ |
+| 22 | Getting started & MSAL integration guides | Install/run, trust the cert, and per-platform "point MSAL here" guides (JS, React, Node, .NET, Python) + the full-stack SPA→API walkthrough | ✓ | 18, 19, 20, 21, 24 | ⬜ |
 | 23 | API, configuration & troubleshooting reference | Endpoint reference, config/env reference, claims reference, cert-trust troubleshooting, security disclaimer | – | 1, 4, 5, 6, 9, 10, 11, 15 | ⬜ |
 
 ## Deferred

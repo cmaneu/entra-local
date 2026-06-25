@@ -386,7 +386,8 @@ These trade-offs are intentional in service of developer ergonomics.
 - Optional consent screen and scope-consent modeling.
 - Import/export of directory state (JSON) for sharing fixtures.
 - Sample applications under `samples/` using MSAL across JS, React, Node (web, daemon, and a
-  Node.js CLI using Device Code), .NET, and Python (see [`roadmap.md`](roadmap.md) Iteration 3).
+  Node.js CLI using Device Code), .NET, and Python, plus a full-stack JS SPA + Node/Express
+  protected-API sample (one app registration per tier) — see [`roadmap.md`](roadmap.md) Iteration 3.
 - Public developer documentation site (see [`roadmap.md`](roadmap.md) Iteration 4).
 
 ---
