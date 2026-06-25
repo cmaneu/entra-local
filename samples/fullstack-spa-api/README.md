@@ -80,6 +80,18 @@ so the configs below work with no admin-portal steps.
 
 Open **three** terminals: emulator, API, SPA.
 
+> **Shortcut (npm workspace):** this folder is an npm workspace covering both `api/` and `spa/`,
+> so you can install and run both tiers with two commands instead of installing each separately:
+>
+> ```bash
+> cd samples/fullstack-spa-api
+> npm install     # installs api + spa dependencies together
+> npm run dev     # starts the API (:4000) and SPA (:5173) in parallel
+> ```
+>
+> You still start the emulator in its own terminal (step 1 below, or the optional docker compose).
+> The per-tier commands in steps 2–3 keep working if you prefer separate terminals.
+
 ### 1. Emulator (terminal 1, from the repo root)
 
 ```bash

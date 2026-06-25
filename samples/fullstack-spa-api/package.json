@@ -1,0 +1,25 @@
+{
+  "name": "entra-local-sample-fullstack",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "npm workspace that installs, builds, and runs the full-stack SPA + API sample together (feature #24).",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "workspaces": ["api", "spa"],
+  "scripts": {
+    "dev": "concurrently -k -n api,spa -c blue,magenta \"npm:dev:api\" \"npm:dev:spa\"",
+    "dev:api": "npm run dev -w api",
+    "dev:spa": "npm run dev -w spa",
+    "build": "npm run build -w spa",
+    "preview": "concurrently -k -n api,spa -c blue,magenta \"npm:start:api\" \"npm:preview:spa\"",
+    "start:api": "npm run start -w api",
+    "preview:spa": "npm run preview -w spa",
+    "typecheck": "npm run typecheck --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
