@@ -22,6 +22,12 @@ describe('GET /health (criterion 7)', () => {
     expect(typeof body.uptimeSeconds).toBe('number');
     expect(body.tls).toBe(false); // test config disables TLS
     expect(body.tenantId).toBe(TEST_TENANT_ID);
+    // #26: advertised origins are reported (collapsed onto the compat origin in the test config).
+    expect(body.origins).toEqual({
+      login: ctx.config.origins.login,
+      portal: ctx.config.origins.portal,
+      graph: ctx.config.origins.graph,
+    });
   });
 
   it('reflects the configured tenant and tls flag', async () => {

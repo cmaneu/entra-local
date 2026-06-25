@@ -97,6 +97,7 @@ beforeAll(async () => {
     CONFIG_FILE: join(TMP_DIR, `${randomUUID()}.none.json`),
     HOST: 'localhost',
     PORT: String(port),
+    PUBLIC_ORIGIN: `https://localhost:${port}`,
     TENANT_ID: TENANT,
     TLS_ENABLED: 'true',
     TLS_CERT_DIR: certDir,

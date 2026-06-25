@@ -9,6 +9,8 @@ export interface Health {
   uptimeSeconds: number;
   tls: boolean;
   tenantId: string;
+  /** Advertised per-surface origins (#26). Collapsed configs report the same value for all three. */
+  origins: { login: string; portal: string; graph: string };
 }
 
 export interface Discovery {

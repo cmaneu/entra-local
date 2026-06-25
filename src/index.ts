@@ -25,16 +25,31 @@ async function startServer(): Promise<void> {
   const server = await createServer(config);
   const { app, origin } = server;
 
+  const collapsed =
+    config.origins.login === config.origins.portal &&
+    config.origins.portal === config.origins.graph;
+
   app.log.info(
     {
       origin,
       issuer: config.issuer,
-      discovery: `${origin}/${config.tenantId}/v2.0/.well-known/openid-configuration`,
-      jwks: `${origin}/${config.tenantId}/discovery/v2.0/keys`,
+      origins: config.origins,
+      discovery: `${config.origins.login}/${config.tenantId}/v2.0/.well-known/openid-configuration`,
+      jwks: `${config.origins.login}/${config.tenantId}/discovery/v2.0/keys`,
+      graph: `${config.origins.graph}/v1.0`,
       tls: config.tls.enabled,
     },
     'Entra Local is listening',
   );
+
+  if (!collapsed) {
+    app.log.info(
+      { hint: 'entra-local hosts --apply' },
+      `Local domains active: login=${config.origins.login} portal=${config.origins.portal} ` +
+        `graph=${config.origins.graph}. If these names do not resolve, run "entra-local hosts ` +
+        `--apply" to map them to 127.0.0.1.`,
+    );
+  }
 
   let shuttingDown = false;
   const shutdown = (signal: NodeJS.Signals): void => {

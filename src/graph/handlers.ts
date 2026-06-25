@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest, RouteHandlerMethod } from 'fastify';
 import type { Config } from '../config/schema.js';
 import { extractBearer } from '../identity/bearer.js';
+import { graphMetadataContextUrl, graphPublicUrl } from '../http/pathmap.js';
 import type { Group, User } from '../store/types.js';
 import type { Store } from '../store/store.js';
 import type { AccessTokenClaims } from '../tokens/claims.js';
@@ -16,7 +17,7 @@ import type { TokenService } from '../tokens/service.js';
  * Authorization model (owned by this feature's spec): possession of a valid Graph-audience token is
  * sufficient — no fine-grained Graph scope/role enforcement in MVP. `/me` additionally requires a
  * delegated (user) token carrying `oid`; an app-only token → 403. Responses are Graph-shaped
- * (`@odata.context` derived from `PUBLIC_ORIGIN`, collections in `value[]`, OData offset paging via
+ * (`@odata.context` derived from the Graph origin, collections in `value[]`, OData offset paging via
  * `@odata.nextLink`). Errors use the Graph error body `{ error: { code, message } }` (distinct from
  * the OAuth surface), never SPA HTML.
  */
@@ -58,9 +59,9 @@ interface GraphGroup {
 const DEFAULT_TOP = 100;
 const MAX_TOP = 999;
 
-/** Build a `@odata.context` URL from `PUBLIC_ORIGIN` for the given `$metadata#<suffix>`. */
+/** Build a `@odata.context` URL on the Graph base for the given `$metadata#<suffix>`. */
 function odataContext(config: Config, suffix: string): string {
-  return `${config.publicOrigin}/graph/v1.0/$metadata#${suffix}`;
+  return graphMetadataContextUrl(config, suffix);
 }
 
 /** Send a Graph-shaped error. `401` additionally emits the RFC 6750 `WWW-Authenticate` header. */
@@ -139,7 +140,7 @@ function buildNextLink(request: FastifyRequest, config: Config, nextSkip: number
     for (const v of values) parts.push(`${key}=${encodeURIComponent(String(v))}`);
   }
   parts.push(`$skiptoken=${nextSkip}`);
-  return `${config.publicOrigin}${path}?${parts.join('&')}`;
+  return `${graphPublicUrl(config, path)}?${parts.join('&')}`;
 }
 
 /** Emit an OData collection envelope with `value[]` and a `@odata.nextLink` only when more remain. */
