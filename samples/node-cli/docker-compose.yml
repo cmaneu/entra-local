@@ -1,0 +1,30 @@
+# Optional: launch ONLY the Entra Local emulator for this sample.
+#
+# The CLI still runs with its normal npm command. This compose file just saves you from starting the
+# emulator separately.
+#
+# Usage:
+#   docker compose up -d            # build + start the emulator on https://localhost:8443
+#   # → the dev certificate is written to ./.emulator-data/tls/cert.pem on the host.
+#   docker compose down             # stop it (add -v to also wipe ./.emulator-data)
+#
+# Then point the CLI at the mounted certificate (only needed when you use compose; the default cert
+# path assumes the emulator was started from the repo root):
+#   # from samples/node-cli
+#   $env:EMULATOR_CA_CERT = "./.emulator-data/tls/cert.pem"   # PowerShell
+#   export EMULATOR_CA_CERT=./.emulator-data/tls/cert.pem      # bash/zsh
+
+services:
+  emulator:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: entra-local
+    ports:
+      - '8443:8443'
+    volumes:
+      # Persists the SQLite DB + TLS cert; exposes cert.pem to the host for the CLI's HTTPS trust.
+      - ./.emulator-data:/app/data
+    environment:
+      # Seed the deterministic demo directory (incl. the public …0001 device-code app) on first boot.
+      SEED_ON_START: 'true'

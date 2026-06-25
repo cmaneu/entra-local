@@ -2,7 +2,8 @@
 
 - **Roadmap ref:** Iteration 3, feature #19 ("Node samples — confidential web, daemon, CLI").
 - **Dependencies:** [#6](2026-06-22_06-auth-code-pkce-signin.md) (auth code), [#8](2026-06-22_08-client-credentials.md) (client credentials), [#13](2026-06-22_13-msal-compat-validation.md) (MSAL matrix + CI), [#15](2026-06-24_15-device-code-flow.md) (device code). Transitively [#5](2026-06-22_05-token-service.md), [#7](2026-06-22_07-refresh-token.md), [#10](2026-06-22_10-minimal-graph.md).
-- **Status:** ⬜ Not started.
+- **Status:** 🟡 Partially implemented — **`node-cli` (device code) shipped** 2026-06-25; `node-web`
+  and `node-daemon` not yet started.
 
 > Builds on the **shared samples infrastructure** owned by
 > [#18](2026-06-25_18-js-react-spa-samples.md): `samples/` layout, the canonical port + app map,
@@ -192,3 +193,33 @@ None blocking. *(Decisions: dedicated confidential web app `…0003` rather than
 daemon; daemon reuses `…0002`; CLI reuses the public SPA `…0001` as its device-code client — matching
 the #15 decision; cert trust via `NODE_EXTRA_CA_CERTS`; in-memory token cache. Seed-contract
 extension recorded in `memory/decisions.md`.)*
+
+---
+
+## Implementation notes (2026-06-25) — `node-cli` only
+
+The **`samples/node-cli/`** device-code CLI is implemented and CI-smoked; `node-web` and
+`node-daemon` (and the `…0003` seed app they need) remain unimplemented.
+
+- **No seed change required.** The CLI reuses the already-seeded public app `…0001`, so this slice
+  added **zero** server-side changes — purely the standalone sample project + a CI job.
+- **Scope → audience.** The CLI requests the bare Graph scope `User.Read`. The emulator's
+  `resolveResource` returns `null` for bare/OIDC-only scopes, so the minted token's `aud` falls back
+  to the Graph resource (`https://graph.microsoft.com`) and the built-in `/me` accepts it. `scp`
+  carries `User.Read` (only `offline_access` is stripped from `scp`). A 200 from `/me` is itself
+  proof of JWKS validity (the endpoint validates signature/iss/aud), so the smoke needs no separate
+  `jose` verification.
+- **Cert trust (UX refinement over the spec's `NODE_EXTRA_CA_CERTS`-only recipe).** Matching the #24
+  convention, the CLI resolves the dev cert via `EMULATOR_CA_CERT` → `NODE_EXTRA_CA_CERTS` →
+  repo-root `data/tls/cert.pem` and trusts it **explicitly** (a custom MSAL `networkClient` for the
+  device-code/token calls + an https `ca` for the Graph call). This makes it work out-of-the-box
+  without exporting `NODE_EXTRA_CA_CERTS` before Node starts, while still honouring it. README
+  documents both.
+- **Headless CI smoke.** `smoke.mjs` spawns the unmodified CLI (`node --import tsx src/cli.ts`),
+  parses the printed `USER_CODE`, and drives the emulator approval surface
+  (`POST /{tenant}/oauth2/v2.0/devicecode/verify`, `lookup → signin → decide` as Alice — the same
+  form sequence the #15 e2e harness uses), then asserts `aud=graph`, `scp ⊇ User.Read`, and that
+  `/me` returns Alice. Added as the `node-cli-sample` CI job.
+- **Files:** `samples/node-cli/{package.json,tsconfig.json,.gitignore,.env.example,docker-compose.yml,
+  README.md,src/cli.ts,smoke.mjs}`; index row in `samples/README.md`; `node-cli-sample` job in
+  `.github/workflows/ci.yml`.

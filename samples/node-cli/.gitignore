@@ -1,0 +1,11 @@
+# Dependencies & build output (this is a standalone sample project, not part of the root build)
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Local emulator data written by the optional `docker compose up` (DB + dev TLS cert).
+.emulator-data/
+
+# Local env overrides
+.env
+.env.local
