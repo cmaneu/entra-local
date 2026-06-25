@@ -1,2 +1,5 @@
 # Local emulator data written by the optional `docker compose up` (DB + dev TLS cert).
 .emulator-data/
+
+# npm workspace install (api + spa dependencies hoisted here).
+node_modules/
