@@ -10,6 +10,7 @@ import { DataTable, type Column } from '../components/DataTable';
 import { Drawer } from '../components/Drawer';
 import { EmptyState } from '../components/States';
 import { Field, TextInput, Toggle } from '../components/Fields';
+import { IdChip } from '../components/IdChip';
 import { Pagination } from '../components/Pagination';
 import { RowOverflowMenu } from '../components/RowOverflowMenu';
 import { SearchBox } from '../components/SearchBox';
@@ -56,6 +57,10 @@ export function Users(): JSX.Element {
       cell: (u) => <span className="mono b-sm">{u.userPrincipalName}</span>,
     },
     { header: 'Display name', cell: (u) => u.displayName },
+    {
+      header: 'Object ID',
+      cell: (u) => <IdChip value={u.id} title="Object ID" />,
+    },
     { header: 'Mail', cell: (u) => <span className="muted">{u.mail ?? '—'}</span> },
     {
       header: 'Enabled',
