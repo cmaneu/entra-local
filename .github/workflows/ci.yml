@@ -55,7 +55,7 @@ jobs:
           key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
 
       # MSAL cross-platform smoke-tests (#13) run inside `npm run test:e2e` as child processes.
       # Provision the .NET SDK and Python + the MSAL packages so they execute (rather than skip)
@@ -146,7 +146,7 @@ jobs:
           echo "spa did not start"; cat spa.log; exit 1
 
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Run the full-stack smoke (200 / 401 / 403)
         run: node samples/fullstack-spa-api/smoke.mjs
