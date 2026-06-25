@@ -15,6 +15,12 @@ npm install && npm run build && npm start
 Seeded users (dev-only credentials): `alice@entralocal.dev` / `bob@entralocal.dev`, password
 `Password1!`.
 
+> **Local domains (#26):** by default the emulator also advertises `login.`/`portal.`/
+> `graph.entra.localhost` and routes by `Host` header. These samples deliberately use the
+> **`localhost` backward-compat origin**, which serves every surface on one host, so they run with
+> **no hosts-file changes**. To exercise the subdomains instead, run `entra-local hosts --apply` and
+> split each sample's origin per surface (login for `authority`, graph for Graph calls).
+
 ## Available samples
 
 | Sample                                                   | Stack                                  | What it demonstrates                                                                 |

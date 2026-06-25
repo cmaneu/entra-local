@@ -22,11 +22,16 @@ export type Line = Tok[];
 
 export interface SnippetInputs {
   app: App;
-  /** Discovery/config issuer, e.g. `https://localhost:8443/<tenant>/v2.0`. */
+  /** Discovery/config issuer, e.g. `https://login.entra.localhost:8443/<tenant>/v2.0`. */
   issuer: string;
   tenantId: string;
   /** A chosen registered redirect URI (falls back to a localhost example when none exist). */
   redirectUri: string;
+  /**
+   * Base URL for Microsoft Graph calls (the emulator's Graph origin). When omitted, derived from the
+   * issuer origin as the legacy single-origin `${origin}/graph` form (collapsed/compat configs).
+   */
+  graphBase?: string;
 }
 
 export interface SnippetValues {
@@ -53,6 +58,15 @@ export function deriveOrigin(issuer: string): { origin: string; host: string } {
   }
 }
 
+/**
+ * Resolve the Graph base URL clients append `/v1.0/...` to. With a dedicated Graph origin it is the
+ * origin root (mirrors `graph.microsoft.com`); when Graph collapses onto the login origin (compat /
+ * `PUBLIC_ORIGIN`) the Graph surface lives under `/graph`, so that prefix is included.
+ */
+export function deriveGraphBase(login: string, graph: string): string {
+  return graph === login ? `${graph}/graph` : graph;
+}
+
 /** Resolve the deterministic snippet values for an app. */
 export function snippetValues(inputs: SnippetInputs): SnippetValues {
   const { origin, host } = deriveOrigin(inputs.issuer);
@@ -63,7 +77,7 @@ export function snippetValues(inputs: SnippetInputs): SnippetValues {
     authority: `${origin}/${inputs.tenantId}`,
     knownAuthorities: [host],
     redirectUri: inputs.redirectUri,
-    graphBase: `${origin}/graph`,
+    graphBase: inputs.graphBase ?? `${origin}/graph`,
     loginScopes: ['openid', 'profile', 'email', 'offline_access', 'User.Read'],
     defaultScope: `${resource}/.default`,
     publicOrigin: origin,

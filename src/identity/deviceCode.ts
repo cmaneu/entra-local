@@ -119,7 +119,7 @@ function handleDeviceAuthorization(
   // The verification URI echoes whichever tenant alias the device authority used, so the human
   // reaches the approval page under the same alias.
   const tenant = (request.params as { tenant?: string }).tenant ?? ctx.config.tenantId;
-  const verificationUri = `${ctx.config.publicOrigin}/${tenant}/${TENANT_ENDPOINTS.devicecode}`;
+  const verificationUri = `${ctx.config.origins.login}/${tenant}/${TENANT_ENDPOINTS.devicecode}`;
   const verificationUriComplete = `${verificationUri}?user_code=${encodeURIComponent(userCode)}`;
 
   void reply

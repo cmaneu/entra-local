@@ -135,6 +135,35 @@ All MSAL sample apps live under a top-level `samples/` folder, one subfolder per
   README-only **sample** cert-trust convention, the emulator's own cert trust IS automated here via
   the `trust` command (print by default, `--apply` to execute; arg-array `execFileSync`, no shell).
 
+### Local domains: subdomain origins routed by Host header, with a loopback compat origin (#26)
+The emulator advertises three origins derived from `BASE_DOMAIN` (default `entra.localhost`): the
+**login** host (`login.<baseDomain>:<port>`) serves the STS surface (discovery, JWKS, authorize,
+token, devicecode, logout); the **portal** host serves the admin SPA + Admin REST API + `/health`;
+the **graph** host serves Microsoft Graph + the OIDC `userinfo` endpoint. All three share the one
+`:8443` listener and are routed by `Host` header in `src/http/hostRouting.ts`. `localhost`/
+`127.0.0.1` is always a **backward-compat** origin that serves every route; when all three origins
+collapse to one host (legacy `PUBLIC_ORIGIN`, or `makeTestConfig`) routing is disabled and every
+request is treated as `compat`.
+- **Deriving URLs.** Read the per-surface origin, never a single `publicOrigin`: login endpoints +
+  issuer use `config.origins.login` (and `src/identity/metadata.ts`); Graph `@odata.context`/
+  `@odata.nextLink` and the discovery `userinfo_endpoint` use the Graph origin via the
+  `graphPublicUrl`/`graphMetadataContextUrl`/`graphUserInfoUrl` helpers in `src/http/pathmap.ts`;
+  the device-code `verification_uri` uses `config.origins.login`.
+- **Wildcard cert + regeneration.** `src/tls/cert.ts` issues one self-signed wildcard leaf covering
+  the apex, `*.<baseDomain>`, the loopback names, and each `LOCAL_DOMAINS` extra (+ its wildcard);
+  `certCoversDomains` + `desiredSans` drive **regenerate-on-mismatch** for the auto-managed cert
+  (user-supplied `TLS_CERT`/`TLS_KEY` are never regenerated).
+- **`hosts` CLI.** `entra-local hosts` prints the plan by default and writes the idempotent
+  `# entra-local BEGIN/END` block only with `--apply` (`--remove` to drop it); inherited by every run
+  target like the other `src/cli/` subcommands. `desiredHostNames` maps each subdomain origin host +
+  apex + `LOCAL_DOMAINS` (apex + login/portal/graph) to `127.0.0.1`, excluding loopback/IP names.
+- **`/health` reports origins.** The health payload includes `origins: { login, portal, graph }`
+  (additive) so the portal and tooling can discover the advertised hosts.
+- **Tests/samples stay on the compat origin.** Integration host-routing tests inject `Host` headers
+  against a non-collapsed `buildTestApp({ origins })`; real-MSAL e2e and the `samples/**` keep using
+  the `localhost` compat origin so they need no hosts-file changes (subdomain behavior is covered by
+  the injected-Host integration tests).
+
 ### Package manager
 The project uses **pnpm** (≥ 9) as its package manager. `pnpm-lock.yaml` is the committed
 lockfile; `package-lock.json` is not used. Build scripts that invoke sub-scripts use `pnpm run

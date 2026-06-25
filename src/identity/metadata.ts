@@ -1,12 +1,13 @@
 import type { Config } from '../config/schema.js';
-import { TENANT_ENDPOINTS, USERINFO_PATH } from '../http/pathmap.js';
+import { TENANT_ENDPOINTS, graphUserInfoUrl } from '../http/pathmap.js';
 
 /**
  * OIDC discovery metadata + the canonical issuer / endpoint-URL derivation. This module owns the
  * single source of truth for:
- *  - the **always-GUID-form** `issuer` (`${PUBLIC_ORIGIN}/${TENANT_ID}/v2.0`), independent of the
+ *  - the **always-GUID-form** `issuer` (`${LOGIN_ORIGIN}/${TENANT_ID}/v2.0`), independent of the
  *    request alias (`common`/`organizations`/`consumers` all resolve to the concrete GUID), and
- *  - every advertised absolute endpoint URL, built from `PUBLIC_ORIGIN` + the shared path map.
+ *  - every advertised absolute endpoint URL: STS endpoints on the login origin + the shared path
+ *    map, and the `userinfo_endpoint` on the Graph origin (mirrors real `graph.microsoft.com`).
  *
  * Feature #5 (token service) MUST import {@link buildIssuer} for its `iss` claim so the discovery
  * `issuer` and minted token `iss` are byte-identical (no independent re-derivation).
@@ -42,9 +43,9 @@ export function buildIssuer(config: Config): string {
   return config.issuer;
 }
 
-/** Build an absolute tenanted endpoint URL (always GUID-form) from `PUBLIC_ORIGIN`. */
+/** Build an absolute tenanted endpoint URL (always GUID-form) from the login origin. */
 function tenantUrl(config: Config, suffix: string): string {
-  return `${config.publicOrigin}/${config.tenantId}/${suffix}`;
+  return `${config.origins.login}/${config.tenantId}/${suffix}`;
 }
 
 /**
@@ -59,7 +60,7 @@ export function buildDiscoveryMetadata(config: Config): DiscoveryMetadata {
     token_endpoint: tenantUrl(config, TENANT_ENDPOINTS.token),
     device_authorization_endpoint: tenantUrl(config, TENANT_ENDPOINTS.devicecode),
     jwks_uri: tenantUrl(config, TENANT_ENDPOINTS.jwks),
-    userinfo_endpoint: `${config.publicOrigin}${USERINFO_PATH}`,
+    userinfo_endpoint: graphUserInfoUrl(config),
     end_session_endpoint: tenantUrl(config, TENANT_ENDPOINTS.logout),
     response_types_supported: ['code'],
     response_modes_supported: ['query', 'fragment'],

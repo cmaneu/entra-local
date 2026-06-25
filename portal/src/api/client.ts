@@ -109,8 +109,8 @@ const ADMIN = '/admin/api';
 export const api = {
   // ---- system ----
   health: () => request<Health>('GET', '/health'),
-  discovery: (tenantId: string) =>
-    request<Discovery>('GET', `/${tenantId}/v2.0/.well-known/openid-configuration`),
+  discovery: (tenantId: string, base = '') =>
+    request<Discovery>('GET', `${base}/${tenantId}/v2.0/.well-known/openid-configuration`),
   certificate: () => request<CertificateInfo>('GET', `${ADMIN}/certificate`),
   seed: () => request<{ seeded: boolean }>('POST', `${ADMIN}/seed`, { force: true }),
   reset: () =>

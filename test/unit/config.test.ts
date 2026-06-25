@@ -52,8 +52,15 @@ describe('loadConfig — defaults & shape (criterion 2)', () => {
 
     // Derived values.
     expect(config.scheme).toBe('https');
-    expect(config.publicOrigin).toBe('https://localhost:8443');
-    expect(config.issuer).toBe(`https://localhost:8443/${DEFAULTS.tenantId}/v2.0`);
+    expect(config.baseDomain).toBe('entra.localhost');
+    expect(config.localDomains).toEqual([]);
+    expect(config.origins).toEqual({
+      login: 'https://login.entra.localhost:8443',
+      portal: 'https://portal.entra.localhost:8443',
+      graph: 'https://graph.entra.localhost:8443',
+    });
+    expect(config.publicOrigin).toBe('https://login.entra.localhost:8443');
+    expect(config.issuer).toBe(`https://login.entra.localhost:8443/${DEFAULTS.tenantId}/v2.0`);
 
     // Frozen (single canonical source).
     expect(Object.isFrozen(config)).toBe(true);
@@ -61,11 +68,50 @@ describe('loadConfig — defaults & shape (criterion 2)', () => {
     expect(Object.isFrozen(config.tokenLifetimes)).toBe(true);
   });
 
-  it('derives http scheme + origin when TLS disabled', () => {
+  it('derives http scheme + origins when TLS disabled', () => {
     const config = loadConfig(baseEnv({ TLS_ENABLED: 'false' }));
     expect(config.scheme).toBe('http');
-    expect(config.publicOrigin).toBe('http://localhost:8443');
-    expect(config.issuer).toBe(`http://localhost:8443/${DEFAULTS.tenantId}/v2.0`);
+    expect(config.origins.login).toBe('http://login.entra.localhost:8443');
+    expect(config.publicOrigin).toBe('http://login.entra.localhost:8443');
+    expect(config.issuer).toBe(`http://login.entra.localhost:8443/${DEFAULTS.tenantId}/v2.0`);
+  });
+
+  it('derives subdomain origins from BASE_DOMAIN + PORT', () => {
+    const config = loadConfig(baseEnv({ BASE_DOMAIN: 'entra.test', PORT: '9443' }));
+    expect(config.origins).toEqual({
+      login: 'https://login.entra.test:9443',
+      portal: 'https://portal.entra.test:9443',
+      graph: 'https://graph.entra.test:9443',
+    });
+    expect(config.issuer).toBe(`https://login.entra.test:9443/${DEFAULTS.tenantId}/v2.0`);
+  });
+
+  it('collapses every origin to PUBLIC_ORIGIN (legacy single-origin back-compat)', () => {
+    const config = loadConfig(baseEnv({ PUBLIC_ORIGIN: 'https://localhost:8443' }));
+    expect(config.origins).toEqual({
+      login: 'https://localhost:8443',
+      portal: 'https://localhost:8443',
+      graph: 'https://localhost:8443',
+    });
+    expect(config.publicOrigin).toBe('https://localhost:8443');
+    expect(config.issuer).toBe(`https://localhost:8443/${DEFAULTS.tenantId}/v2.0`);
+  });
+
+  it('lets a per-surface origin override win over PUBLIC_ORIGIN', () => {
+    const config = loadConfig(
+      baseEnv({
+        PUBLIC_ORIGIN: 'https://localhost:8443',
+        GRAPH_ORIGIN: 'https://graph.entra.localhost:8443',
+      }),
+    );
+    expect(config.origins.login).toBe('https://localhost:8443');
+    expect(config.origins.portal).toBe('https://localhost:8443');
+    expect(config.origins.graph).toBe('https://graph.entra.localhost:8443');
+  });
+
+  it('parses LOCAL_DOMAINS as a comma-separated list', () => {
+    const config = loadConfig(baseEnv({ LOCAL_DOMAINS: 'entra.example, foo.localhost ,' }));
+    expect(config.localDomains).toEqual(['entra.example', 'foo.localhost']);
   });
 });
 

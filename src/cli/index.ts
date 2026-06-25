@@ -1,9 +1,19 @@
 import { readFileSync } from 'node:fs';
 import { ConfigError, loadConfig } from '../config/loadConfig.js';
 import { certFingerprint, resolveCertPath } from '../tls/cert.js';
+import { runHosts, HostsError } from './hosts.js';
 import { runTrust, TrustError } from './trust.js';
 
-const COMMANDS = new Set(['trust', 'untrust', 'cert-path', 'show-cert', 'help', '--help', '-h']);
+const COMMANDS = new Set([
+  'trust',
+  'untrust',
+  'hosts',
+  'cert-path',
+  'show-cert',
+  'help',
+  '--help',
+  '-h',
+]);
 
 /** True iff the first argv token is a recognised subcommand (otherwise the server boots). */
 export function isCliCommand(argv: readonly string[]): boolean {
@@ -22,6 +32,9 @@ function printHelp(out: (msg: string) => void): void {
       '                              Trust the dev certificate (print by default; --apply runs it)',
       '  entra-local untrust [--apply]',
       '                              Remove the dev certificate from the trust store',
+      '  entra-local hosts [--apply] [--remove]',
+      '                              Map the local domains to 127.0.0.1 in the hosts file',
+      '                              (print by default; --apply writes it, needs admin/sudo)',
       '  entra-local cert-path       Print the path to the certificate clients must trust',
       '  entra-local show-cert       Print the certificate path and SHA-256 fingerprint',
       '  entra-local help            Show this help',
@@ -29,6 +42,7 @@ function printHelp(out: (msg: string) => void): void {
       'Notes:',
       '  trust/untrust print the exact platform command and a NODE_EXTRA_CA_CERTS hint.',
       '  Pass --apply to execute it (may prompt for elevation on some platforms).',
+      '  hosts manages an idempotent "# entra-local" block; --remove deletes it.',
     ].join('\n'),
   );
 }
@@ -81,12 +95,22 @@ export async function runCli(argv: readonly string[]): Promise<number> {
       case 'untrust':
         runTrust({ config, action: 'remove', apply: rest.includes('--apply'), out });
         return 0;
+      case 'hosts':
+        runHosts({
+          config,
+          action: rest.includes('--remove') ? 'remove' : 'apply',
+          apply: rest.includes('--apply'),
+          out,
+        });
+        return 0;
       default:
         printHelp(out);
         return 0;
     }
   } catch (err) {
-    if (err instanceof TrustError || err instanceof Error) return fail(err.message);
+    if (err instanceof TrustError || err instanceof HostsError || err instanceof Error) {
+      return fail(err.message);
+    }
     throw err;
   }
 }

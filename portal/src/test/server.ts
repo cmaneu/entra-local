@@ -11,6 +11,7 @@ export const HEALTH: Health = {
   uptimeSeconds: 42,
   tls: true,
   tenantId: TENANT_ID,
+  origins: { login: ORIGIN, portal: ORIGIN, graph: ORIGIN },
 };
 
 export const DISCOVERY: Discovery = {

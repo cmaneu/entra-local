@@ -11,6 +11,8 @@ export interface HealthResponse {
   uptimeSeconds: number;
   tls: boolean;
   tenantId: string;
+  /** Advertised per-surface origins (#26). Equal to one another in collapsed/compat configs. */
+  origins: { login: string; portal: string; graph: string };
 }
 
 /** `GET /health` — liveness/readiness JSON (Docker healthcheck + e2e readiness poll). */
@@ -22,6 +24,11 @@ export function registerHealth(app: FastifyInstance): void {
       uptimeSeconds: Math.floor(process.uptime()),
       tls: app.config.tls.enabled,
       tenantId: app.config.tenantId,
+      origins: {
+        login: app.config.origins.login,
+        portal: app.config.origins.portal,
+        graph: app.config.origins.graph,
+      },
     };
     void reply.code(200).send(body);
   });

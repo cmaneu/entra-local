@@ -4,6 +4,7 @@ import formbody from '@fastify/formbody';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import type { Config } from './config/schema.js';
 import { errorHandler } from './http/errors.js';
+import { createHostRouter, enforceHostRouting } from './http/hostRouting.js';
 import { registerGraphRoutes, registerHealth } from './http/plugins.js';
 import { registerSpaFallback } from './http/spaFallback.js';
 import { registerAdminApi } from './admin/plugin.js';
@@ -45,11 +46,15 @@ export async function buildApp(
   config: Config,
   options: BuildAppOptions = {},
 ): Promise<FastifyInstance> {
+  const router = createHostRouter(config);
   const serverOptions: FastifyServerOptions = {
     logger: { level: config.logLevel },
     disableRequestLogging: config.logLevel === 'silent',
     requestIdHeader: 'x-request-id',
     requestIdLogLabel: 'reqId',
+    // Pre-routing rewrite: on a dedicated Graph host, re-add the `/graph` prefix that the
+    // root-level Graph paths (`/v1.0/*`, `/oidc/userinfo`) drop, so registered routes still match.
+    rewriteUrl: (req) => router.rewriteUrl(req.url ?? '/', req.headers.host),
   };
   if (options.https) {
     (serverOptions as Record<string, unknown>).https = options.https;
@@ -66,6 +71,11 @@ export async function buildApp(
   await app.register(formbody);
   await app.register(cookie);
   await app.register(cors, { origin: true, credentials: true, maxAge: 3600 });
+
+  // Confine each typed host (`login.`/`portal.`/`graph.`) to its slice of the path map; the
+  // legacy `localhost`/`127.0.0.1` compat host (and the collapsed single-origin config) serves
+  // everything. Registered after CORS so browser preflight is handled first.
+  enforceHostRouting(app, router, config);
 
   registerStore(app);
 

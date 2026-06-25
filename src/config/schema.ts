@@ -26,6 +26,22 @@ function coerceNum(v: unknown): unknown {
   return v;
 }
 
+/**
+ * Normalize a comma-separated string (env) or array (config file) into a trimmed string[].
+ * Missing/empty input becomes an empty list so the field is always an array.
+ */
+function splitList(v: unknown): unknown {
+  if (v === undefined || v === null) return [];
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string') {
+    return v
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+  }
+  return v;
+}
+
 const zBool = z.preprocess(coerceBool, z.boolean());
 const zInt = (min: number, max?: number) => {
   let schema = z.number().int().min(min);
@@ -45,6 +61,11 @@ export const RawConfigSchema = z
     tenantId: z.string().regex(GUID_RE, 'must be a GUID'),
     issuer: z.string().url().optional(),
     publicOrigin: z.string().url().optional(),
+    baseDomain: z.string().min(1),
+    localDomains: z.preprocess(splitList, z.array(z.string().min(1))),
+    loginOrigin: z.string().url().optional(),
+    portalOrigin: z.string().url().optional(),
+    graphOrigin: z.string().url().optional(),
     dbPath: z.string().min(1),
     tlsEnabled: zBool,
     tlsCertPath: z.string().min(1).optional(),
@@ -90,8 +111,24 @@ export interface Config {
   readonly scheme: 'https' | 'http';
   /** Token `iss` / discovery `issuer`. Derived unless overridden. */
   readonly issuer: string;
-  /** Base origin for endpoint URLs. Derived unless overridden. */
+  /**
+   * Base origin for endpoint URLs. Retained for back-compat; equals `origins.login` unless a
+   * legacy `PUBLIC_ORIGIN` collapses every origin to a single host.
+   */
   readonly publicOrigin: string;
+  /** Base domain the subdomain origins are derived from (default `entra.localhost`). */
+  readonly baseDomain: string;
+  /** Extra apex domains included in the cert SANs and the hosts-file block. */
+  readonly localDomains: readonly string[];
+  /** Per-surface advertised origins, routed by `Host` header onto the one shared listener. */
+  readonly origins: {
+    /** STS: discovery, JWKS, authorize, token, devicecode, logout. */
+    readonly login: string;
+    /** Admin portal SPA + Admin REST API + `/health`. */
+    readonly portal: string;
+    /** Graph API + OIDC `userinfo`. */
+    readonly graph: string;
+  };
   readonly dbPath: string;
   readonly tls: {
     readonly enabled: boolean;
@@ -115,11 +152,21 @@ export interface Config {
   readonly nodeEnv: NodeEnv;
 }
 
-/** Assemble + freeze the public Config from a validated raw config, deriving issuer/origin. */
+/** Assemble + freeze the public Config from a validated raw config, deriving issuer/origins. */
 export function assembleConfig(raw: RawConfig): Config {
   const scheme: 'https' | 'http' = raw.tlsEnabled ? 'https' : 'http';
-  const publicOrigin = raw.publicOrigin ?? `${scheme}://${raw.host}:${raw.port}`;
-  const issuer = raw.issuer ?? `${publicOrigin}/${raw.tenantId}/v2.0`;
+
+  // Per-surface origin precedence: explicit per-surface override > legacy PUBLIC_ORIGIN
+  // collapse > derived `<surface>.<baseDomain>:<port>`.
+  const subdomainOrigin = (sub: string): string =>
+    `${scheme}://${sub}.${raw.baseDomain}:${raw.port}`;
+  const origins = Object.freeze({
+    login: raw.loginOrigin ?? raw.publicOrigin ?? subdomainOrigin('login'),
+    portal: raw.portalOrigin ?? raw.publicOrigin ?? subdomainOrigin('portal'),
+    graph: raw.graphOrigin ?? raw.publicOrigin ?? subdomainOrigin('graph'),
+  });
+  const publicOrigin = origins.login;
+  const issuer = raw.issuer ?? `${origins.login}/${raw.tenantId}/v2.0`;
 
   const config: Config = {
     host: raw.host,
@@ -128,6 +175,9 @@ export function assembleConfig(raw: RawConfig): Config {
     scheme,
     issuer,
     publicOrigin,
+    baseDomain: raw.baseDomain,
+    localDomains: Object.freeze([...raw.localDomains]),
+    origins,
     dbPath: raw.dbPath,
     tls: Object.freeze({
       enabled: raw.tlsEnabled,
