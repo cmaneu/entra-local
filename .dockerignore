@@ -28,6 +28,7 @@ Dockerfile
 specs/
 memory/
 brand/
+samples/
 
 # Local config / secrets (never bake real secrets into the image).
 entra-local.config.json

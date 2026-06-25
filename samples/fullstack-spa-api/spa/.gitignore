@@ -1,0 +1,8 @@
+# Dependencies & build output (standalone sample project, not part of the root build)
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Local env overrides
+.env
+.env.local

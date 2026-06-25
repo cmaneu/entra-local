@@ -25,6 +25,10 @@ entra-local.config.json
 # Test artifacts
 coverage/
 
+# Samples (standalone projects): deps/build covered by node_modules/ and dist/ above; this is the
+# local emulator data written by each sample's optional `docker compose up`.
+samples/**/.emulator-data/
+
 # Cross-platform MSAL compat smoke-test build artifacts (#13)
 test/compat/dotnet/bin/
 test/compat/dotnet/obj/

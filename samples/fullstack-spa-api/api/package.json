@@ -1,0 +1,28 @@
+{
+  "name": "entra-local-sample-fullstack-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sample Express resource API that validates Entra Local access tokens (feature #24).",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jose": "^6.2.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

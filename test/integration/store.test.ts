@@ -100,9 +100,9 @@ describe('store plugin: seed determinism (criterion 3)', () => {
       expect(count(db, 'users')).toBe(2);
       expect(count(db, 'groups')).toBe(1);
       expect(count(db, 'group_members')).toBe(2);
-      expect(count(db, 'app_registrations')).toBe(2);
-      expect(count(db, 'app_redirect_uris')).toBe(1);
-      expect(count(db, 'app_scopes')).toBe(1);
+      expect(count(db, 'app_registrations')).toBe(4);
+      expect(count(db, 'app_redirect_uris')).toBe(2);
+      expect(count(db, 'app_scopes')).toBe(3);
       expect(count(db, 'app_secrets')).toBe(1);
       expect(count(db, 'app_roles')).toBe(1);
       expect(count(db, 'signing_keys')).toBe(1); // #3 bootstrap seeds/generates the active key
@@ -125,6 +125,20 @@ describe('store plugin: seed determinism (criterion 3)', () => {
       expect(ctx.app.store.apps.verifySecret(daemon!.appId, 'daemon-app-secret')).toBe(true);
       expect(ctx.app.store.apps.listRoles(daemon!.appId).map((r) => r.value)).toEqual([
         'Tasks.Read.All',
+      ]);
+
+      // Full-stack sample (#24): dedicated front SPA app + back API resource app.
+      const spaFront = ctx.app.store.apps.getByAppId('cccccccc-0000-0000-0000-000000000004');
+      expect(spaFront?.isConfidential).toBe(false);
+      expect(ctx.app.store.apps.listRedirectUris(spaFront!.appId).map((r) => r.uri)).toContain(
+        'http://localhost:5173',
+      );
+      const api = ctx.app.store.apps.getByAppId('cccccccc-0000-0000-0000-000000000005');
+      expect(api?.isConfidential).toBe(false);
+      expect(api?.appIdUri).toBe('api://cccccccc-0000-0000-0000-000000000005');
+      expect(ctx.app.store.apps.listScopes(api!.appId).map((s) => s.value)).toEqual([
+        'access_as_admin',
+        'access_as_user',
       ]);
     } finally {
       await ctx.close();

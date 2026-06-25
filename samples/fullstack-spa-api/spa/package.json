@@ -1,0 +1,20 @@
+{
+  "name": "entra-local-sample-fullstack-spa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sample @azure/msal-browser SPA that calls a protected API through Entra Local (feature #24).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@azure/msal-browser": "^3.28.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vite": "^6.4.3"
+  }
+}
