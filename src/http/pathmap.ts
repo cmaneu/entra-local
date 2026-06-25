@@ -1,3 +1,5 @@
+import type { Config } from '../config/schema.js';
+
 /**
  * Canonical single-origin path map constants.
  *
@@ -30,9 +32,45 @@ export const TENANT_ENDPOINTS = {
 /**
  * Canonical single-origin UserInfo path (under `/graph`, not `/{tenant}/...`). Locked path map
  * overrides the draft global-spec `/{tenant}/openid/userinfo`. Advertised by discovery (#4),
- * implemented by #9.
+ * implemented by #9. On a dedicated Graph host the advertised URL drops the `/graph` prefix
+ * (see {@link graphPublicBase}); on the compat/collapsed origin it keeps it.
  */
 export const USERINFO_PATH = '/graph/oidc/userinfo';
+
+/**
+ * The advertised Graph base for `@odata` URLs + the discovery `userinfo_endpoint`.
+ *
+ * - **Dedicated Graph host** (`origins.graph` differs from `origins.login`): URLs sit at the host
+ *   root (`prefix: ''`), mirroring real `graph.microsoft.com/v1.0` / `/oidc/userinfo`.
+ * - **Collapsed / single-origin** (`PUBLIC_ORIGIN`, or the test harness): URLs keep the `/graph`
+ *   path prefix so the one shared origin still disambiguates the Graph surface.
+ */
+export function graphPublicBase(config: Config): { origin: string; prefix: '' | '/graph' } {
+  const collapsed = config.origins.graph === config.origins.login;
+  return { origin: config.origins.graph, prefix: collapsed ? '/graph' : '' };
+}
+
+/** Advertised `userinfo_endpoint` URL (Graph host root, or `/graph`-prefixed when collapsed). */
+export function graphUserInfoUrl(config: Config): string {
+  const { origin, prefix } = graphPublicBase(config);
+  return `${origin}${prefix}/oidc/userinfo`;
+}
+
+/** Advertised `@odata.context` URL for a `$metadata#<suffix>` fragment on the Graph base. */
+export function graphMetadataContextUrl(config: Config, suffix: string): string {
+  const { origin, prefix } = graphPublicBase(config);
+  return `${origin}${prefix}/v1.0/$metadata#${suffix}`;
+}
+
+/**
+ * Map a served request path (always the registered `/graph/...` form) onto the advertised Graph
+ * base, so a `@odata.nextLink` echoes the same host + path shape the client called.
+ */
+export function graphPublicUrl(config: Config, registeredPath: string): string {
+  const { origin, prefix } = graphPublicBase(config);
+  const path = prefix === '' ? registeredPath.replace(/^\/graph/, '') || '/' : registeredPath;
+  return `${origin}${path}`;
+}
 
 /** Build a registered tenanted route template (`/:tenant/${suffix}`) for Fastify registration. */
 export function tenantRoute(suffix: string): string {

@@ -25,6 +25,11 @@ export function makeTestConfig(dbPath: string): Config {
     scheme,
     issuer: `${publicOrigin}/${TEST_TENANT_ID}/v2.0`,
     publicOrigin,
+    baseDomain: 'entra.localhost',
+    localDomains: Object.freeze([]),
+    // Collapsed single-origin: every surface served on the compat host so `inject` (which
+    // defaults the Host header to localhost) and the existing assertions stay origin-stable.
+    origins: Object.freeze({ login: publicOrigin, portal: publicOrigin, graph: publicOrigin }),
     dbPath,
     tls: Object.freeze({ enabled: false, certDir: './data/tls' }),
     requirePassword: false,

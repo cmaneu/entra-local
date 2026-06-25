@@ -130,6 +130,9 @@ beforeAll(async () => {
     CONFIG_FILE: join(TMP_DIR, `${randomUUID()}.none.json`),
     HOST: 'localhost',
     PORT: String(emulatorPort),
+    // Collapse all advertised origins onto the bound loopback origin so MSAL authority validation
+    // (issuer host:port === authority) holds without local-domain DNS/cert in CI (#26 back-compat).
+    PUBLIC_ORIGIN: `https://localhost:${emulatorPort}`,
     TENANT_ID: TENANT,
     TLS_ENABLED: 'true',
     TLS_CERT_DIR: certDir,

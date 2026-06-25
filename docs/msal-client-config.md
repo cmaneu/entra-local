@@ -11,13 +11,24 @@ Iteration 3 samples (#18–#22). It mirrors the configuration matrix in
 
 ## Canonical values
 
-- **Authority:** `<origin>/<tenantId>` — e.g. `https://localhost:8443/11111111-1111-1111-1111-111111111111`.
+`<origin>` is the **login** origin the emulator advertises. With the default local domains (#26)
+that is `https://login.entra.localhost:8443`; on the backward-compat loopback origin it is
+`https://localhost:8443` (legacy `PUBLIC_ORIGIN` mode collapses every surface onto one host). Pick
+one origin per client and use it consistently — MSAL validates that the discovery `issuer` matches
+the configured authority.
+
+- **Authority:** `<origin>/<tenantId>` — e.g. `https://login.entra.localhost:8443/11111111-1111-1111-1111-111111111111`.
 - **Tenant id:** `11111111-1111-1111-1111-111111111111` (fixed).
 - **Discovery route:** `<origin>/<tenantId>/v2.0/.well-known/openid-configuration` (note the `/v2.0`).
 - **Issuer (`iss`):** `<origin>/<tenantId>/v2.0` — a concrete GUID, **not** `{tenantid}`-templated.
+- **Graph base:** `https://graph.entra.localhost:8443/v1.0` (compat/loopback: `https://localhost:8443/graph/v1.0`).
+  The discovery `userinfo_endpoint` points at the Graph origin's `/oidc/userinfo`.
 - **JWKS:** RS256 keys published as `n`/`e`/`kid` (no `x5c`); signature verification works from those.
-- **Cert trust:** the emulator serves a self-signed TLS cert (`<TLS_CERT_DIR>/cert.pem`); each client
-  must trust it (per-platform below).
+- **Cert trust:** the emulator serves a self-signed wildcard TLS cert (`<TLS_CERT_DIR>/cert.pem`,
+  covering `*.entra.localhost` + the apex + loopback); each client must trust it (per-platform below).
+- **Name resolution:** `*.entra.localhost` does not auto-resolve on every OS, so run
+  `entra-local hosts --apply` once (or target the loopback compat origin) before pointing a client at
+  the subdomains.
 
 ## Configuration matrix
 

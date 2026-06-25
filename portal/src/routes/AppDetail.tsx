@@ -5,7 +5,7 @@ import type { App, AppRole, AppScope, CreatedSecret, RedirectUri } from '../api/
 import { useAsync } from '../hooks/useAsync';
 import { useShell } from '../hooks/useToast';
 import { useEmulator } from '../components/EmulatorContext';
-import { browserSnippet, nodeSnippet, snippetValues } from '../lib/msalSnippet';
+import { browserSnippet, deriveGraphBase, nodeSnippet, snippetValues } from '../lib/msalSnippet';
 import { Banner } from '../components/Banner';
 import { Button } from '../components/Button';
 import { CodeBlock } from '../components/CodeBlock';
@@ -676,6 +676,7 @@ function MsalSnippet({ app }: { app: App }): JSX.Element {
     issuer: discovery.issuer,
     tenantId: health.tenantId,
     redirectUri: chosen,
+    graphBase: deriveGraphBase(health.origins.login, health.origins.graph),
   });
   const lines = tab === 'browser' ? browserSnippet(values) : nodeSnippet(values);
   const host = values.host;

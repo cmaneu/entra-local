@@ -86,17 +86,21 @@ See the [roadmap](specs/roadmap.md) for what may land in later iterations.
 ## How it works
 
 ```text
-   Your app (MSAL)                         Entra Local (single process)
-  ┌───────────────┐   authority =        ┌──────────────────────────────┐
-  │  SPA / Web /  │   https://localhost: │  OIDC / OAuth2 endpoints      │
-  │ Daemon / CLI  │──────8443/{tenant}──▶│  Minimal Graph (/me /users)   │
-  └───────────────┘                      │  Admin REST API + Portal      │
-         ▲                               │  Token service (RS256)        │
-         │  validate JWT via JWKS        │  SQLite data store            │
-  ┌──────┴────────┐                      └──────────────────────────────┘
-  │  Resource API │◀──────── JWKS ───────────────────┘
+   Your app (MSAL)                         Entra Local (one process, one :8443 listener)
+  ┌───────────────┐                       ┌────────────────────────────────────┐
+  │  SPA / Web /  │   authority =         │  login.entra.localhost   STS/OIDC   │
+  │ Daemon / CLI  │──login.entra.local──▶ │  graph.entra.localhost   Min. Graph │
+  └───────────────┘   :8443/{tenant}      │  portal.entra.localhost  API+Portal │
+         ▲                                │  Token service (RS256)              │
+         │  validate JWT via JWKS         │  SQLite data store                  │
+  ┌──────┴────────┐                       └────────────────────────────────────┘
+  │  Resource API │◀──────── JWKS ───────────────────────────┘
   └───────────────┘
 ```
+
+The three surfaces share one HTTPS listener and are routed by `Host` header. The legacy
+`localhost`/`127.0.0.1` origin stays a **backward-compat** host that serves every route, so existing
+setups keep working unchanged.
 
 ## Running the emulator
 
@@ -113,9 +117,10 @@ Pull and run the prebuilt image from the GitHub Container Registry — no clone,
 ```bash
 docker pull ghcr.io/cmaneu/entra-local
 docker run -p 8443:8443 -v entra-local-data:/app/data ghcr.io/cmaneu/entra-local
-# Portal:    https://localhost:8443/
-# Health:    https://localhost:8443/health        -> {"status":"ok", ...}
-# Discovery: https://localhost:8443/{tenantId}/v2.0/.well-known/openid-configuration
+# Portal:    https://portal.entra.localhost:8443/   (or compat: https://localhost:8443/)
+# Health:    https://portal.entra.localhost:8443/health   -> {"status":"ok", ...}
+# Discovery: https://login.entra.localhost:8443/{tenantId}/v2.0/.well-known/openid-configuration
+# Run `entra-local hosts --apply` once so the *.entra.localhost names resolve (or use localhost).
 ```
 
 The image is a hardened multi-stage build (Node 24 base for the built-in `node:sqlite`
@@ -127,8 +132,9 @@ newest full release; pin a specific version with `ghcr.io/cmaneu/entra-local:<ve
 - **Persistence:** mount a named volume at **`/app/data`** so the SQLite DB and the
   auto-generated cert (stable fingerprint) survive `docker stop`/`docker start` and upgrades.
 - **Port mapping:** the container binds `HOST=0.0.0.0` internally (so the published port is
-  reachable from the host) while issuer/origin still default to `https://localhost:8443`. Map
-  it with `-p 8443:8443` (or `-p <hostPort>:8443`).
+  reachable from the host) while the advertised issuer/origins default to the
+  `*.entra.localhost` subdomains (with `localhost` as a compat origin). Map it with
+  `-p 8443:8443` (or `-p <hostPort>:8443`).
 - **Config passthrough:** every config key is read from the environment — for example:
 
   ```bash
@@ -139,10 +145,11 @@ newest full release; pin a specific version with `ghcr.io/cmaneu/entra-local:<ve
     -v entra-local-data:/app/data ghcr.io/cmaneu/entra-local
   ```
 
-- **Fronted differently?** If clients reach the emulator at something other than
-  `https://localhost:8443` (a different host/port, or behind a proxy), set `PUBLIC_ORIGIN`
-  (and optionally `ISSUER`) so discovery/JWKS/token URLs and the token `iss` match what
-  clients actually use — e.g. `-e PUBLIC_ORIGIN=https://entra.localtest.me:8443`.
+- **Fronted differently?** The advertised origins are derived from `BASE_DOMAIN` (default
+  `entra.localhost`); override individual surfaces with `LOGIN_ORIGIN`/`PORTAL_ORIGIN`/
+  `GRAPH_ORIGIN`, or collapse all three back onto a single host with the legacy `PUBLIC_ORIGIN`
+  (and optionally `ISSUER`) so discovery/JWKS/token URLs and the token `iss` match what clients
+  actually use — e.g. `-e PUBLIC_ORIGIN=https://entra.localtest.me:8443`.
 
 #### Docker Compose
 
@@ -178,6 +185,7 @@ volumes:
 Deploy Entra Local into Kubernetes with the OCI Helm chart published to GitHub Packages:
 
 ```bash
+<<<<<<< HEAD
 helm upgrade --install entra-local \
   oci://ghcr.io/cmaneu/entra-local-helm/entra-local \
   --version 0.1.0
@@ -193,9 +201,10 @@ scheduling options.
 pnpm install     # install dependencies
 pnpm run build   # compile the server (dist/) + build the admin portal (single-file)
 pnpm start       # run the built server: node dist/index.js
-# Portal:    https://localhost:8443/
-# Health:    https://localhost:8443/health        -> {"status":"ok", ...}
-# Discovery: https://localhost:8443/{tenantId}/v2.0/.well-known/openid-configuration
+# Portal:    https://portal.entra.localhost:8443/   (or compat: https://localhost:8443/)
+# Health:    https://portal.entra.localhost:8443/health   -> {"status":"ok", ...}
+# Discovery: https://login.entra.localhost:8443/{tenantId}/v2.0/.well-known/openid-configuration
+# Run `npm start -- hosts --apply` once so the *.entra.localhost names resolve (or use localhost).
 ```
 
 `pnpm start` runs the **built** server, so run `pnpm run build` first (a guard aborts with a
@@ -266,11 +275,42 @@ The Release tag is stamped into the artifacts at build time, so the running buil
 exact version at `/health` — and the portal surfaces it in the top-bar health chip and the
 Dashboard "Version" card.
 
+### Local domains
+
+By default the emulator advertises three subdomains of `entra.localhost`, all served on the one
+`:8443` listener and routed by the `Host` header:
+
+| Surface | Origin | Serves |
+|---|---|---|
+| **Login (STS)** | `https://login.entra.localhost:8443` | discovery, JWKS, authorize, token, devicecode, logout |
+| **Portal** | `https://portal.entra.localhost:8443` | admin portal SPA + Admin REST API + `/health` |
+| **Graph** | `https://graph.entra.localhost:8443` | Microsoft Graph + OIDC `userinfo` |
+
+`localhost`/`127.0.0.1` stays a **backward-compat** origin that serves every route, so nothing
+breaks if you keep using it.
+
+`*.entra.localhost` does not resolve automatically on every OS (notably Windows), so map the names
+to `127.0.0.1` with the built-in `hosts` command — it prints the plan by default and only writes the
+hosts file with `--apply` (which usually needs elevation):
+
+```bash
+npm start -- hosts                    # print the hosts-file plan
+npm start -- hosts --apply            # write the entries (Administrator / sudo)
+npm start -- hosts --remove --apply   # remove them again
+```
+
+From the single-file binary the same subcommand works directly (`entra-local hosts --apply`). Add
+extra apex domains — each gets `login.`/`portal.`/`graph.` subdomains in the wildcard cert **and**
+the hosts block — via `LOCAL_DOMAINS=contoso.test,fabrikam.test`, or change the base with
+`BASE_DOMAIN`. Prefer to keep everything on one host? Set `PUBLIC_ORIGIN` (see above) or just use the
+`localhost` compat origin.
+
 ### Certificate trust
 
-The emulator serves HTTPS with an auto-generated, persisted **self-signed** certificate
-(CN=`localhost`, OU=`Entra Local emulator`, SANs for `localhost`/`127.0.0.1`/`::1`), so clients must
-trust it or relax verification **in dev only**:
+The emulator serves HTTPS with an auto-generated, persisted **self-signed wildcard** certificate
+(CN=`entra.localhost`, OU=`Entra Local emulator`, SANs for `entra.localhost`, `*.entra.localhost`, `localhost`, `127.0.0.1`,
+`::1`, plus any `LOCAL_DOMAINS`), so the same cert covers every subdomain and the loopback compat
+origin. Clients must trust it or relax verification **in dev only**:
 
 - **Trust it from the portal (works everywhere, including Docker):** open the portal Dashboard and
   use the **Trust the certificate** section to download the cert and copy a ready-made trust script
@@ -305,15 +345,19 @@ trust it or relax verification **in dev only**:
 {
   "auth": {
     "clientId": "<appId from the portal>",
-    "authority": "https://localhost:8443/11111111-1111-1111-1111-111111111111",
-    "knownAuthorities": ["localhost:8443"],
+    "authority": "https://login.entra.localhost:8443/11111111-1111-1111-1111-111111111111",
+    "knownAuthorities": ["login.entra.localhost:8443"],
     "redirectUri": "https://localhost:3000"
   }
 }
 ```
 
-Trust the emulator's self-signed certificate (or relax cert validation in dev) so MSAL can
-fetch the discovery document and JWKS over HTTPS.
+The portal generates this snippet for each app with the emulator's advertised origins (the login
+host for `authority`/`knownAuthorities`, the graph host for Graph calls). On the `localhost` compat
+origin the authority is `https://localhost:8443/<tenant>` and `knownAuthorities` is `localhost:8443`.
+Run `hosts --apply` (above) so the subdomains resolve, and trust the emulator's self-signed
+certificate (or relax cert validation in dev) so MSAL can fetch the discovery document and JWKS over
+HTTPS.
 
 ## Development
 
@@ -353,6 +397,8 @@ self-signed cert) lives under `data/` (gitignored).
 - 🗺️ **[Roadmap](specs/roadmap.md)** — iterations, MVP cut, dependencies, and deferred work.
 - 📋 **[Global specification](specs/global-spec.md)** — goals, architecture, API surface,
   token design, data model, configuration, deployment, and acceptance criteria.
+- 🔌 **[MSAL client configuration](docs/msal-client-config.md)** — per-platform authority,
+  `knownAuthorities`, instance-discovery, and cert-trust settings (including the local-domain origins).
 - 🤝 **[Contributing](CONTRIBUTING.md)** — how to propose changes (open an issue first) and the
   project's governance.
 - 🧠 **[Decisions](memory/decisions.md)** / **[Conventions](memory/conventions.md)** —
