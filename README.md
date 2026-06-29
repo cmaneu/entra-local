@@ -179,7 +179,7 @@ Deploy Entra Local into Kubernetes with the OCI Helm chart published to GitHub P
 
 ```bash
 helm upgrade --install entra-local \
-  oci://ghcr.io/cmaneu/entra-local/entra-local \
+  oci://ghcr.io/cmaneu/entra-local/entra-local-helm \
   --version 0.1.0
 ```
 
