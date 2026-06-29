@@ -173,7 +173,21 @@ volumes:
 > 🛠️ **Contributors** can build the image locally instead of pulling it:
 > `docker build -t entra-local .` (or `pnpm run docker:build && pnpm run docker:run`).
 
-### 2. From source (`pnpm start`)
+### 2. Kubernetes (Helm)
+
+Deploy Entra Local into Kubernetes with the OCI Helm chart published to GitHub Packages:
+
+```bash
+helm upgrade --install entra-local \
+  oci://ghcr.io/cmaneu/entra-local/entra-local \
+  --version 0.1.0
+```
+
+The chart is documented in [deployment/helm/README.md](deployment/helm/README.md). It exposes
+values for the image, replica count, service, ingress, resources, environment variables, and
+scheduling options.
+
+### 3. From source (`pnpm start`)
 
 ```bash
 pnpm install     # install dependencies
@@ -189,7 +203,7 @@ clear message if `dist/` or the portal bundle is missing). State (the SQLite DB 
 and the TLS cert/key under `TLS_CERT_DIR`) persists under `./data/` and survives restarts.
 For an auto-reloading dev loop instead, use `pnpm run dev`.
 
-### 3. Single-file binary (Node SEA)
+### 4. Single-file binary (Node SEA)
 
 Build a **self-contained native executable** that boots the full emulator with **no Node
 install, no `npm install`, and no external files** — the compiled server, all production
