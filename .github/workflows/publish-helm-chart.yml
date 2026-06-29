@@ -17,7 +17,63 @@ permissions:
   packages: write
 
 jobs:
+  kind-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.21.1
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.31.0
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: entra-local-chart
+          wait: 300s
+
+      - name: Build container image
+        run: docker build -t entra-local:test .
+
+      - name: Load image into kind
+        run: kind load docker-image entra-local:test --name entra-local-chart
+
+      - name: Install chart on kind
+        run: |
+          helm upgrade --install entra-local deployment/helm \
+            --wait --timeout 10m \
+            --set image.repository=entra-local \
+            --set image.tag=test \
+            --set image.pullPolicy=IfNotPresent \
+            --set service.type=ClusterIP
+
+      - name: Wait for deployment readiness
+        run: kubectl rollout status deployment/entra-local --timeout=10m
+
+      - name: Smoke test the emulator
+        run: |
+          kubectl port-forward svc/entra-local 18443:8443 >/tmp/entra-local-port-forward.log 2>&1 &
+          pf_pid=$!
+          trap 'kill "$pf_pid"' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS -k https://127.0.0.1:18443/health -o /tmp/health.json; then
+              break
+            fi
+            sleep 5
+          done
+          curl -fsS -k https://127.0.0.1:18443/health | tee /tmp/health.json
+          grep -q '"status":"ok"' /tmp/health.json
+          curl -fsS -k https://127.0.0.1:18443/ | grep -q '<html'
+
   publish:
+    needs: kind-smoke-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
