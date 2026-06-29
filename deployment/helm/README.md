@@ -17,7 +17,7 @@ The deployment uses conservative pod security defaults (non-root, no privilege e
 
 ```bash
 helm upgrade --install entra-local \
-  oci://ghcr.io/cmaneu/entra-local/entra-local-helm \
+  oci://ghcr.io/cmaneu/entra-local-helm/entra-local \
   --version 0.1.0
 ```
 
@@ -25,7 +25,7 @@ helm upgrade --install entra-local \
 
 ```bash
 helm upgrade --install entra-local \
-  oci://ghcr.io/cmaneu/entra-local/entra-local-helm \
+  oci://ghcr.io/cmaneu/entra-local-helm/entra-local \
   --version 0.1.0 \
   -f values.yaml
 ```
@@ -51,7 +51,7 @@ ingress:
 ## Upgrade a release
 
 ```bash
-helm upgrade entra-local oci://ghcr.io/cmaneu/entra-local/entra-local-helm --version 0.1.0
+helm upgrade entra-local oci://ghcr.io/cmaneu/entra-local-helm/entra-local --version 0.1.0
 ```
 
 ## Uninstall a release
