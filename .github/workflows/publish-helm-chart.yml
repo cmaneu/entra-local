@@ -1,0 +1,66 @@
+name: Publish Helm chart
+
+on:
+  workflow_dispatch:
+    inputs:
+      chart_version:
+        description: Optional chart version override
+        required: false
+        default: ""
+      app_version:
+        description: Optional application version override
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.21.1
+
+      - name: Lint chart
+        run: helm lint deployment/helm
+
+      - name: Render chart templates
+        run: helm template entra-local deployment/helm >/tmp/entra-local-rendered.yaml
+
+      - name: Derive chart metadata
+        id: metadata
+        shell: bash
+        run: |
+          chart_name="$(sed -n 's/^name: //p' deployment/helm/Chart.yaml | tr -d '[:space:]')"
+          chart_version="${{ inputs.chart_version }}"
+          if [ -z "$chart_version" ]; then
+            chart_version="$(sed -n 's/^version: //p' deployment/helm/Chart.yaml | tr -d '[:space:]')"
+          fi
+          app_version="${{ inputs.app_version }}"
+          if [ -z "$app_version" ]; then
+            app_version="$(sed -n 's/^appVersion: //p' deployment/helm/Chart.yaml | tr -d '[:space:]' | sed 's/"//g')"
+          fi
+          echo "chart_name=$chart_name" >> "$GITHUB_OUTPUT"
+          echo "chart_version=$chart_version" >> "$GITHUB_OUTPUT"
+          echo "app_version=$app_version" >> "$GITHUB_OUTPUT"
+
+      - name: Package chart
+        run: |
+          helm package deployment/helm \
+            --version "${{ steps.metadata.outputs.chart_version }}" \
+            --app-version "${{ steps.metadata.outputs.app_version }}"
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ github.token }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Publish chart to GHCR OCI
+        run: |
+          chart_package="${{ steps.metadata.outputs.chart_name }}-${{ steps.metadata.outputs.chart_version }}.tgz"
+          helm push "$chart_package" "oci://ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}"
