@@ -63,4 +63,4 @@ jobs:
       - name: Publish chart to GHCR OCI
         run: |
           chart_package="${{ steps.metadata.outputs.chart_name }}-${{ steps.metadata.outputs.chart_version }}.tgz"
-          helm push "$chart_package" "oci://ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}"
+          helm push "$chart_package" "oci://ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-helm"
