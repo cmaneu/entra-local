@@ -19,6 +19,8 @@ export default tseslint.config(
       // Cross-platform MSAL compat smoke-tests (#13): C#/Python projects + their build artifacts
       // (.venv, bin/, obj/) are not part of the TS lint surface.
       'test/compat/**',
+      // Helm chart: YAML-only, not part of the TS lint surface.
+      'deployment/helm/**',
     ],
   },
   eslint.configs.recommended,
