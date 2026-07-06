@@ -1,0 +1,86 @@
+# PR Docker Publish: when a maintainer comments `/docker-publish`, `/docker publish`, or
+# `#docker publish` on a pull request, build the Docker image from the PR head commit and
+# push it to the GitHub Container Registry tagged with the commit SHA (never `latest`).
+name: PR Docker Publish
+
+on:
+  issue_comment:
+    types: [created]
+
+# Write packages to push to GHCR; write pull-requests to post the result comment.
+permissions:
+  contents: read
+  packages: write
+  pull-requests: write
+
+jobs:
+  docker-publish:
+    # Only run for PR comments (issues lack the `pull_request` key) that contain one of the
+    # recognised trigger phrases. Case-insensitive matching is achieved by lowercasing the
+    # body before comparison.
+    if: |
+      github.event.issue.pull_request != null &&
+      (
+        contains(github.event.comment.body, '/docker-publish') ||
+        contains(github.event.comment.body, '/docker publish') ||
+        contains(github.event.comment.body, '#docker publish')
+      )
+    runs-on: ubuntu-latest
+    steps:
+      # The `issue_comment` event runs in the default-branch context; look up the PR head SHA
+      # explicitly so we check out (and build) the actual PR commit.
+      - name: Resolve PR head SHA and number
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(gh api "${{ github.event.issue.pull_request.url }}" --jq '.head.sha')
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "number=${{ github.event.issue.number }}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.sha }}
+
+      - name: Derive image name (lowercase) and short SHA
+        id: meta
+        shell: bash
+        run: |
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          sha="${{ steps.pr.outputs.sha }}"
+          echo "short_sha=${sha:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        run: docker build -t entra-local:pr .
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      # Tag with the full commit SHA only — never move or create the `latest` tag.
+      - name: Tag and push image
+        shell: bash
+        run: |
+          image="${{ steps.meta.outputs.image }}"
+          sha="${{ steps.pr.outputs.sha }}"
+          docker tag entra-local:pr "$image:$sha"
+          docker push "$image:$sha"
+
+      # Report the published reference back to the PR so reviewers can pull it immediately.
+      - name: Comment on PR with image reference
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          image="${{ steps.meta.outputs.image }}"
+          sha="${{ steps.pr.outputs.sha }}"
+          short_sha="${{ steps.meta.outputs.short_sha }}"
+          gh pr comment "${{ steps.pr.outputs.number }}" \
+            --repo "${{ github.repository }}" \
+            --body "🐳 Docker image published for commit \`${short_sha}\` (PR #${{ steps.pr.outputs.number }}):
+
+          \`\`\`bash
+          docker pull ${image}:${sha}
+          docker run -p 8443:8443 -v entra-local-data:/app/data ${image}:${sha}
+          \`\`\`
+
+          Full image reference: \`${image}:${sha}\`"
