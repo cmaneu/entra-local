@@ -117,10 +117,11 @@ Pull and run the prebuilt image from the GitHub Container Registry — no clone,
 ```bash
 docker pull ghcr.io/cmaneu/entra-local
 docker run -p 8443:8443 -v entra-local-data:/app/data ghcr.io/cmaneu/entra-local
-# Portal:    https://portal.entra.localhost:8443/   (or compat: https://localhost:8443/)
-# Health:    https://portal.entra.localhost:8443/health   -> {"status":"ok", ...}
-# Discovery: https://login.entra.localhost:8443/{tenantId}/v2.0/.well-known/openid-configuration
-# Run `entra-local hosts --apply` once so the *.entra.localhost names resolve (or use localhost).
+# Portal:    https://localhost:8443/
+# Health:    https://localhost:8443/health        -> {"status":"ok", ...}
+# Discovery: https://localhost:8443/{tenantId}/v2.0/.well-known/openid-configuration
+# The image advertises the localhost compat origin by default (ORIGIN_MODE=compat). To use the
+# login./portal./graph. subdomains, add `-e ORIGIN_MODE=subdomains` and map the names on your host.
 ```
 
 The image is a hardened multi-stage build (Node 24 base for the built-in `node:sqlite`
@@ -132,9 +133,9 @@ newest full release; pin a specific version with `ghcr.io/cmaneu/entra-local:<ve
 - **Persistence:** mount a named volume at **`/app/data`** so the SQLite DB and the
   auto-generated cert (stable fingerprint) survive `docker stop`/`docker start` and upgrades.
 - **Port mapping:** the container binds `HOST=0.0.0.0` internally (so the published port is
-  reachable from the host) while the advertised issuer/origins default to the
-  `*.entra.localhost` subdomains (with `localhost` as a compat origin). Map it with
-  `-p 8443:8443` (or `-p <hostPort>:8443`).
+  reachable from the host) while the advertised issuer/origins default to the **`localhost` compat
+  origin** (`ORIGIN_MODE=compat` — a container can't make `*.entra.localhost` resolve on the host,
+  and the origin's port follows `PORT`). Map it with `-p 8443:8443` (or `-p <hostPort>:8443`).
 - **Config passthrough:** every config key is read from the environment — for example:
 
   ```bash
@@ -145,11 +146,11 @@ newest full release; pin a specific version with `ghcr.io/cmaneu/entra-local:<ve
     -v entra-local-data:/app/data ghcr.io/cmaneu/entra-local
   ```
 
-- **Fronted differently?** The advertised origins are derived from `BASE_DOMAIN` (default
-  `entra.localhost`); override individual surfaces with `LOGIN_ORIGIN`/`PORTAL_ORIGIN`/
-  `GRAPH_ORIGIN`, or collapse all three back onto a single host with the legacy `PUBLIC_ORIGIN`
-  (and optionally `ISSUER`) so discovery/JWKS/token URLs and the token `iss` match what clients
-  actually use — e.g. `-e PUBLIC_ORIGIN=https://entra.localtest.me:8443`.
+- **Fronted differently?** The image advertises `https://localhost:<port>` by default
+  (`ORIGIN_MODE=compat`). Switch to the subdomain topology with `-e ORIGIN_MODE=subdomains` (then
+  map the names on your host), point individual surfaces with `LOGIN_ORIGIN`/`PORTAL_ORIGIN`/
+  `GRAPH_ORIGIN`, or set `PUBLIC_ORIGIN` (and optionally `ISSUER`) so discovery/JWKS/token URLs and
+  the token `iss` match what clients actually use — e.g. `-e PUBLIC_ORIGIN=https://entra.localtest.me:8443`.
 
 #### Docker Compose
 
@@ -277,8 +278,9 @@ Dashboard "Version" card.
 
 ### Local domains
 
-By default the emulator advertises three subdomains of `entra.localhost`, all served on the one
-`:8443` listener and routed by the `Host` header:
+`npm start` and the single-file binary advertise three subdomains of `entra.localhost` by default,
+all served on the one `:8443` listener and routed by the `Host` header (the **Docker image** defaults
+to the `localhost` compat origin instead — see the note after the table):
 
 | Surface | Origin | Serves |
 |---|---|---|
@@ -288,6 +290,10 @@ By default the emulator advertises three subdomains of `entra.localhost`, all se
 
 `localhost`/`127.0.0.1` stays a **backward-compat** origin that serves every route, so nothing
 breaks if you keep using it.
+
+The default is set by **`ORIGIN_MODE`**: `subdomains` for `npm start` / the SEA binary, and `compat`
+for the Docker image (a container can't make `*.entra.localhost` resolve on the host, so it advertises
+`https://localhost:<port>`). Flip either way with `ORIGIN_MODE=subdomains|compat`.
 
 `*.entra.localhost` does not resolve automatically on every OS (notably Windows), so map the names
 to `127.0.0.1` with the built-in `hosts` command — it prints the plan by default and only writes the
@@ -302,8 +308,9 @@ npm start -- hosts --remove --apply   # remove them again
 From the single-file binary the same subcommand works directly (`entra-local hosts --apply`). Add
 extra apex domains — each gets `login.`/`portal.`/`graph.` subdomains in the wildcard cert **and**
 the hosts block — via `LOCAL_DOMAINS=contoso.test,fabrikam.test`, or change the base with
-`BASE_DOMAIN`. Prefer to keep everything on one host? Set `PUBLIC_ORIGIN` (see above) or just use the
-`localhost` compat origin.
+`BASE_DOMAIN`. Prefer to keep everything on one host? Set `ORIGIN_MODE=compat` (the Docker image's
+default) to collapse every surface onto `https://localhost:<port>`, set `PUBLIC_ORIGIN` for a custom
+single origin, or just use the `localhost` compat origin.
 
 ### Certificate trust
 

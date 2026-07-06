@@ -28,3 +28,6 @@ services:
     environment:
       # Seed the deterministic demo directory (incl. the public …0001 device-code app) on first boot.
       SEED_ON_START: 'true'
+      # No PUBLIC_ORIGIN needed: the image defaults to ORIGIN_MODE=compat, so the device-code
+      # verification URI + token issuer are advertised on https://localhost:8443 — matching this CLI
+      # sample, which targets the loopback origin and can't add hosts entries from the container.

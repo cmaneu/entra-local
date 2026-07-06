@@ -9,17 +9,24 @@ All samples assume the emulator is running on `https://localhost:8443` with its 
 directory. From the repo root:
 
 ```bash
-npm install && npm run build && npm start
+npm install && npm run build
+# The samples target the loopback compat origin, so advertise that origin (see the note below):
+PUBLIC_ORIGIN=https://localhost:8443 npm start        # bash/zsh
+# $env:PUBLIC_ORIGIN='https://localhost:8443'; npm start   # PowerShell
 ```
 
 Seeded users (dev-only credentials): `alice@entralocal.dev` / `bob@entralocal.dev`, password
 `Password1!`.
 
-> **Local domains (#26):** by default the emulator also advertises `login.`/`portal.`/
-> `graph.entra.localhost` and routes by `Host` header. These samples deliberately use the
-> **`localhost` backward-compat origin**, which serves every surface on one host, so they run with
-> **no hosts-file changes**. To exercise the subdomains instead, run `entra-local hosts --apply` and
-> split each sample's origin per surface (login for `authority`, graph for Graph calls).
+> **Local domains (#26):** by default the emulator advertises `login.`/`portal.`/
+> `graph.entra.localhost` and **mints tokens with the `login.` subdomain issuer**. These samples
+> deliberately target the **`localhost` backward-compat origin** (`EMULATOR_ORIGIN`/authority =
+> `https://localhost:8443`), so start the emulator with **`PUBLIC_ORIGIN=https://localhost:8443`** to
+> collapse every surface — issuer, authorize, token, Graph — back onto `localhost`. That keeps them
+> running with **no hosts-file changes**. (Without it, MSAL is redirected to the non-resolving
+> subdomains and the API's `iss` check rejects the token.) To exercise the subdomains instead, run
+> `entra-local hosts --apply` and split each sample's origin per surface (login for `authority`,
+> graph for Graph calls).
 
 ## Available samples
 

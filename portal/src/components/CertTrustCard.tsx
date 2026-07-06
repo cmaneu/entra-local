@@ -69,7 +69,9 @@ export function CertTrustCard(): JSX.Element | null {
           {info && (
             <div className="kv mb16">
               <div className="k">Subject</div>
-              <div className="mono b-sm">Entra Local emulator (CN=localhost)</div>
+              <div className="mono b-sm">
+                {info.subject ? info.subject.split('\n').join(' · ') : 'Entra Local emulator'}
+              </div>
               <div className="k">SHA-256</div>
               <div>
                 <IdChip value={info.fingerprintSha256 ?? ''} full title="SHA-256 fingerprint" />

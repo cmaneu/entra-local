@@ -6,6 +6,14 @@ export const GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const;
 const NODE_ENVS = ['development', 'test', 'production'] as const;
 
+/**
+ * How the advertised per-surface origins are derived by default (when no explicit origin override
+ * is set): `subdomains` advertises `login.`/`portal.`/`graph.<baseDomain>`; `compat` collapses them
+ * onto the loopback `localhost` host. `npm start` / the SEA binary default to `subdomains`; the
+ * Docker image sets `compat` (a container cannot make `*.entra.localhost` resolve on the host).
+ */
+const ORIGIN_MODES = ['subdomains', 'compat'] as const;
+
 /** Coerce an env-string / value into a boolean, leaving invalid input to fail validation. */
 function coerceBool(v: unknown): unknown {
   if (typeof v === 'boolean') return v;
@@ -66,6 +74,7 @@ export const RawConfigSchema = z
     loginOrigin: z.string().url().optional(),
     portalOrigin: z.string().url().optional(),
     graphOrigin: z.string().url().optional(),
+    originMode: z.enum(ORIGIN_MODES),
     dbPath: z.string().min(1),
     tlsEnabled: zBool,
     tlsCertPath: z.string().min(1).optional(),
@@ -157,13 +166,17 @@ export function assembleConfig(raw: RawConfig): Config {
   const scheme: 'https' | 'http' = raw.tlsEnabled ? 'https' : 'http';
 
   // Per-surface origin precedence: explicit per-surface override > legacy PUBLIC_ORIGIN
-  // collapse > derived `<surface>.<baseDomain>:<port>`.
+  // collapse > `ORIGIN_MODE=compat` loopback collapse > derived `<surface>.<baseDomain>:<port>`.
   const subdomainOrigin = (sub: string): string =>
     `${scheme}://${sub}.${raw.baseDomain}:${raw.port}`;
+  // `compat` (the Docker image default) collapses every surface onto the loopback host, derived
+  // from PORT so a `-e PORT=…` override stays correct; explicit origins still win over it.
+  const compatOrigin =
+    raw.originMode === 'compat' ? `${scheme}://localhost:${raw.port}` : undefined;
   const origins = Object.freeze({
-    login: raw.loginOrigin ?? raw.publicOrigin ?? subdomainOrigin('login'),
-    portal: raw.portalOrigin ?? raw.publicOrigin ?? subdomainOrigin('portal'),
-    graph: raw.graphOrigin ?? raw.publicOrigin ?? subdomainOrigin('graph'),
+    login: raw.loginOrigin ?? raw.publicOrigin ?? compatOrigin ?? subdomainOrigin('login'),
+    portal: raw.portalOrigin ?? raw.publicOrigin ?? compatOrigin ?? subdomainOrigin('portal'),
+    graph: raw.graphOrigin ?? raw.publicOrigin ?? compatOrigin ?? subdomainOrigin('graph'),
   });
   const publicOrigin = origins.login;
   const issuer = raw.issuer ?? `${origins.login}/${raw.tenantId}/v2.0`;

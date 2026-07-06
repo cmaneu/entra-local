@@ -39,6 +39,7 @@ function readEnv(env: NodeJS.ProcessEnv): FlatRaw {
     loginOrigin: env.LOGIN_ORIGIN,
     portalOrigin: env.PORTAL_ORIGIN,
     graphOrigin: env.GRAPH_ORIGIN,
+    originMode: env.ORIGIN_MODE,
     dbPath: env.DB_PATH,
     tlsEnabled: env.TLS_ENABLED,
     tlsCertPath: env.TLS_CERT,
@@ -71,6 +72,7 @@ const ConfigFileSchema = z
     loginOrigin: z.unknown(),
     portalOrigin: z.unknown(),
     graphOrigin: z.unknown(),
+    originMode: z.unknown(),
     dbPath: z.unknown(),
     tls: z
       .object({
@@ -127,6 +129,7 @@ function readConfigFile(env: NodeJS.ProcessEnv): FlatRaw {
     loginOrigin: file.loginOrigin,
     portalOrigin: file.portalOrigin,
     graphOrigin: file.graphOrigin,
+    originMode: file.originMode,
     dbPath: file.dbPath,
     tlsEnabled: tls.enabled,
     tlsCertPath: tls.certPath,
@@ -157,6 +160,7 @@ const FLAT_TO_ENV: Record<string, string> = {
   loginOrigin: 'LOGIN_ORIGIN',
   portalOrigin: 'PORTAL_ORIGIN',
   graphOrigin: 'GRAPH_ORIGIN',
+  originMode: 'ORIGIN_MODE',
   dbPath: 'DB_PATH',
   tlsEnabled: 'TLS_ENABLED',
   tlsCertPath: 'TLS_CERT',
