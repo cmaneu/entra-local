@@ -16,8 +16,7 @@ permissions:
 jobs:
   docker-publish:
     # Only run for PR comments (issues lack the `pull_request` key) that contain one of the
-    # recognised trigger phrases. Case-insensitive matching is achieved by lowercasing the
-    # body before comparison.
+    # recognised trigger phrases. GitHub Actions `contains()` is case-insensitive by default.
     if: |
       github.event.issue.pull_request != null &&
       (
@@ -66,6 +65,7 @@ jobs:
           docker push "$image:$sha"
 
       # Report the published reference back to the PR so reviewers can pull it immediately.
+      # Write the body to a temp file to avoid shell quoting issues with the multi-line string.
       - name: Comment on PR with image reference
         env:
           GH_TOKEN: ${{ github.token }}
@@ -74,13 +74,18 @@ jobs:
           image="${{ steps.meta.outputs.image }}"
           sha="${{ steps.pr.outputs.sha }}"
           short_sha="${{ steps.meta.outputs.short_sha }}"
+          body_file=$(mktemp)
+          {
+            echo "🐳 Docker image published for commit \`${short_sha}\` (PR #${{ steps.pr.outputs.number }}):"
+            echo ""
+            echo '```bash'
+            echo "docker pull ${image}:${sha}"
+            echo "docker run -p 8443:8443 -v entra-local-data:/app/data ${image}:${sha}"
+            echo '```'
+            echo ""
+            echo "Full image reference: \`${image}:${sha}\`"
+          } > "$body_file"
           gh pr comment "${{ steps.pr.outputs.number }}" \
             --repo "${{ github.repository }}" \
-            --body "🐳 Docker image published for commit \`${short_sha}\` (PR #${{ steps.pr.outputs.number }}):
-
-          \`\`\`bash
-          docker pull ${image}:${sha}
-          docker run -p 8443:8443 -v entra-local-data:/app/data ${image}:${sha}
-          \`\`\`
-
-          Full image reference: \`${image}:${sha}\`"
+            --body-file "$body_file"
+          rm -f "$body_file"
