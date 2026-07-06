@@ -126,7 +126,7 @@ jobs:
           fi
 
           # Find all versions that carry the PR tag and delete them.
-          version_ids=$(gh api "${base_url}/versions" --paginate \
+          version_ids=$(gh api --paginate "${base_url}/versions" \
             --jq ".[] | select(.metadata.container.tags | contains([\"${pr_tag}\"])) | .id")
 
           if [ -z "$version_ids" ]; then
@@ -134,9 +134,9 @@ jobs:
             exit 0
           fi
 
-          for id in $version_ids; do
+          while read -r id; do
             echo "Deleting package version ${id} (tag: ${pr_tag})"
             gh api --method DELETE "${base_url}/versions/${id}"
-          done
+          done <<< "$version_ids"
           echo "Cleaned up image tag ${pr_tag}."
 
