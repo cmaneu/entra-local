@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { Discovery, Health } from '../api/types';
+import type { CertificateInfo, Discovery, Health } from '../api/types';
 
 /** Deterministic emulator identity used across portal component tests (mirrors the seed). */
 export const TENANT_ID = '11111111-1111-1111-1111-111111111111';
@@ -21,6 +21,19 @@ export const DISCOVERY: Discovery = {
   jwks_uri: `${ORIGIN}/${TENANT_ID}/discovery/v2.0/keys`,
   userinfo_endpoint: `${ORIGIN}/oidc/userinfo`,
   end_session_endpoint: `${ORIGIN}/${TENANT_ID}/oauth2/v2.0/logout`,
+};
+
+export const CERTIFICATE: CertificateInfo = {
+  enabled: true,
+  subject: 'CN=localhost\nOU=Entra Local emulator\nO=Entra Local',
+  issuer: 'CN=localhost\nOU=Entra Local emulator\nO=Entra Local',
+  fingerprintSha256: 'AB:CD:EF:01:23:45:67:89:AB:CD:EF:01:23:45:67:89',
+  thumbprintSha1: 'ABCDEF0123456789ABCDEF0123456789ABCDEF01',
+  serialNumber: '01',
+  validFrom: 'Jan  1 00:00:00 2026 GMT',
+  validTo: 'Jan  1 00:00:00 2036 GMT',
+  fileName: 'entra-local-ca.crt',
+  downloadPath: '/admin/api/certificate/pem',
 };
 
 export interface RequestContext {
@@ -52,6 +65,7 @@ export function installFetch(handler: Handler = () => undefined): ReturnType<typ
     if (!res) {
       if (path === '/health') res = { body: HEALTH };
       else if (path.includes('/.well-known/openid-configuration')) res = { body: DISCOVERY };
+      else if (path === '/admin/api/certificate') res = { body: CERTIFICATE };
       else res = { status: 404, body: { error: { code: 'not_found', message: 'Not found.' } } };
     }
 

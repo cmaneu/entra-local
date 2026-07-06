@@ -348,6 +348,7 @@ export function renderErrorPage(options: ErrorPageOptions): string {
 export interface SignedOutPageOptions {
   tenantId: string;
   issuer: string;
+  returnToApplicationUrl?: string;
 }
 
 /**
@@ -355,8 +356,23 @@ export interface SignedOutPageOptions {
  * lightly styled from the shared DESIGN tokens; the full branded treatment is deferred to #12.
  */
 export function renderSignedOutPage(options: SignedOutPageOptions): string {
+  let safeReturnToApplicationUrl: string | undefined;
+  if (options.returnToApplicationUrl) {
+    try {
+      const parsed = new URL(options.returnToApplicationUrl);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        safeReturnToApplicationUrl = parsed.toString();
+      }
+    } catch {
+      safeReturnToApplicationUrl = undefined;
+    }
+  }
+  const returnToApplication = safeReturnToApplicationUrl
+    ? `<p><a class="primary" href="${escapeHtml(safeReturnToApplicationUrl)}">Return to application</a></p>`
+    : '';
   const body = `<h1>You're signed out</h1>
   <p class="sub">Your Entra Local session has ended. You can close this window.</p>
+  ${returnToApplication}
   ${footer(options.tenantId, options.issuer)}`;
   return page('Signed out', 'Entra Local', body, 'Signed out of Entra Local');
 }

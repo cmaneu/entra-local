@@ -4,6 +4,7 @@ import type {
   App,
   AppRole,
   AppScope,
+  CertificateInfo,
   CreatedSecret,
   Discovery,
   Group,
@@ -109,7 +110,8 @@ export const api = {
   // ---- system ----
   health: () => request<Health>('GET', '/health'),
   discovery: (tenantId: string, base = '') =>
-    request<Discovery>('GET', `${base}/${tenantId}/v2.0/.well-known/openid-configuration`),
+    request<Discovery>('GET', `${base}/${tenantId}/v2.0/.well-known/openid-configura
+  certificate: () => request<CertificateInfo>('GET', `${ADMIN}/certificate`),
   seed: () => request<{ seeded: boolean }>('POST', `${ADMIN}/seed`, { force: true }),
   reset: () =>
     request<{ reset: true; reseeded: boolean }>('POST', `${ADMIN}/reset`, { reseed: true }),

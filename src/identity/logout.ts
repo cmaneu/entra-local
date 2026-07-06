@@ -10,14 +10,14 @@ import { renderSignedOutPage } from './signinPage.js';
 /**
  * Front-channel logout / end-session endpoint (feature #9): `GET /{tenant}/oauth2/v2.0/logout`.
  * Clears the emulator SSO session (the `sessions` row + the signed cookie) and, when a validated
- * `post_logout_redirect_uri` is supplied, redirects the browser there; otherwise it renders a
- * minimal "signed out" page. Replaces the reserved `501` stub advertised by discovery (#4) as
- * `end_session_endpoint`.
+ * `post_logout_redirect_uri` is supplied, renders a signed-out page with a "Return to application"
+ * link to it; otherwise it renders the signed-out page without that link. Replaces the reserved
+ * `501` stub advertised by discovery (#4) as `end_session_endpoint`.
  *
- * Security: a `post_logout_redirect_uri` is honored only when it **exactly** matches a redirect URI
- * registered for the resolved `client_id` (the `client_id` param, or — best-effort, signature NOT
- * enforced — the `id_token_hint`'s `aud`). With no resolvable `client_id` or no exact match the
- * browser is never redirected to the unvalidated URI; the signed-out page is rendered instead.
+ * Security: the "Return to application" link is shown only when `post_logout_redirect_uri`
+ * **exactly** matches a redirect URI registered for the resolved `client_id` (the `client_id`
+ * param, or — best-effort, signature NOT enforced — the `id_token_hint`'s `aud`). With no
+ * resolvable `client_id` or no exact match the page is rendered without the link.
  *
  * Logout is **idempotent**: a missing/invalid session still succeeds and still clears the cookie.
  */
@@ -57,12 +57,18 @@ function clientIdFromHint(idTokenHint: string | undefined): string | undefined {
 }
 
 /** Render the signed-out confirmation page (200). */
-function renderSignedOut(reply: FastifyReply, ctx: LogoutContext): void {
+function renderSignedOut(reply: FastifyReply, ctx: LogoutContext, returnTo?: string): void {
   void reply
     .code(200)
     .header('cache-control', 'no-store')
     .type('text/html; charset=utf-8')
-    .send(renderSignedOutPage({ tenantId: ctx.config.tenantId, issuer: ctx.issuer }));
+    .send(
+      renderSignedOutPage({
+        tenantId: ctx.config.tenantId,
+        issuer: ctx.issuer,
+        returnToApplicationUrl: returnTo,
+      }),
+    );
 }
 
 /** Handle the end-session request: clear the session, then redirect or render the signed-out page. */
@@ -99,11 +105,15 @@ function handleLogout(request: FastifyRequest, reply: FastifyReply, ctx: LogoutC
     return;
   }
 
-  // 3) Validated: redirect to it, echoing `state` if provided.
+  // 3) Validated: keep the signed-out page, but offer a return link (echoing `state` if provided).
   const target = new URL(postLogoutRedirectUri);
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') {
+    renderSignedOut(reply, ctx);
+    return;
+  }
   const state = getParam(query, 'state');
   if (state !== undefined) target.searchParams.append('state', state);
-  void reply.header('cache-control', 'no-store').redirect(target.toString(), 302);
+  renderSignedOut(reply, ctx, target.toString());
 }
 
 /**

@@ -22,6 +22,23 @@ export interface Discovery {
   end_session_endpoint: string;
 }
 
+/**
+ * Public metadata about the self-signed dev certificate clients must trust, returned by
+ * `GET /admin/api/certificate`. `enabled: false` means TLS is off (no certificate to trust).
+ */
+export interface CertificateInfo {
+  enabled: boolean;
+  subject?: string;
+  issuer?: string;
+  fingerprintSha256?: string;
+  thumbprintSha1?: string;
+  serialNumber?: string;
+  validFrom?: string;
+  validTo?: string;
+  fileName?: string;
+  downloadPath?: string;
+}
+
 export interface Paged<T> {
   value: T[];
   count: number;
