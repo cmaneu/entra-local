@@ -356,8 +356,19 @@ export interface SignedOutPageOptions {
  * lightly styled from the shared DESIGN tokens; the full branded treatment is deferred to #12.
  */
 export function renderSignedOutPage(options: SignedOutPageOptions): string {
-  const returnToApplication = options.returnToApplicationUrl
-    ? `<p><a class="primary" href="${escapeHtml(options.returnToApplicationUrl)}">Return to application</a></p>`
+  let safeReturnToApplicationUrl: string | undefined;
+  if (options.returnToApplicationUrl) {
+    try {
+      const parsed = new URL(options.returnToApplicationUrl);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        safeReturnToApplicationUrl = parsed.toString();
+      }
+    } catch {
+      safeReturnToApplicationUrl = undefined;
+    }
+  }
+  const returnToApplication = safeReturnToApplicationUrl
+    ? `<p><a class="primary" href="${escapeHtml(safeReturnToApplicationUrl)}">Return to application</a></p>`
     : '';
   const body = `<h1>You're signed out</h1>
   <p class="sub">Your Entra Local session has ended. You can close this window.</p>
