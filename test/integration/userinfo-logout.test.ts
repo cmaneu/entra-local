@@ -45,6 +45,15 @@ function extractSignedState(html: string): string {
     .replace(/&quot;/g, '"');
 }
 
+function extractReturnToApplicationLink(html: string): string | undefined {
+  const m = /href="([^"]+)">Return to application<\/a>/.exec(html);
+  if (!m) return undefined;
+  return m[1]!
+    .replace(/&amp;/g, '&')
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"');
+}
+
 interface TokenSet {
   accessToken: string;
   idToken: string;
@@ -327,28 +336,32 @@ describe('Logout redirect validation (criterion 7)', () => {
     });
   }
 
-  it('registered post_logout_redirect_uri + client_id → 302 echoing state', async () => {
+  it('registered post_logout_redirect_uri + client_id → signed-out page with return link echoing state', async () => {
     ctx = await buildTestApp();
     const res = await logout(ctx, {
       post_logout_redirect_uri: REDIRECT,
       client_id: SPA,
       state: 'xyz-123',
     });
-    expect(res.statusCode).toBe(302);
-    const loc = new URL(res.headers.location as string);
+    expect(res.statusCode).toBe(200);
+    expect(res.headers.location).toBeUndefined();
+    const href = extractReturnToApplicationLink(res.body);
+    expect(href).toBeTruthy();
+    const loc = new URL(href as string);
     expect(`${loc.origin}${loc.pathname}`.replace(/\/$/, '')).toBe(REDIRECT);
     expect(loc.searchParams.get('state')).toBe('xyz-123');
   });
 
-  it('resolves client_id from id_token_hint when client_id param is absent → 302', async () => {
+  it('resolves client_id from id_token_hint when client_id param is absent → signed-out page with return link', async () => {
     ctx = await buildTestApp();
     const tokens = await signInAndToken(ctx);
     const res = await logout(ctx, {
       post_logout_redirect_uri: REDIRECT,
       id_token_hint: tokens.idToken,
     });
-    expect(res.statusCode).toBe(302);
-    expect((res.headers.location as string).startsWith(REDIRECT)).toBe(true);
+    expect(res.statusCode).toBe(200);
+    const href = extractReturnToApplicationLink(res.body);
+    expect((href ?? '').startsWith(REDIRECT)).toBe(true);
   });
 
   it('unregistered post_logout_redirect_uri → no redirect, signed-out page', async () => {
@@ -360,6 +373,7 @@ describe('Logout redirect validation (criterion 7)', () => {
     expect(res.statusCode).toBe(200);
     expect(res.headers.location).toBeUndefined();
     expect(res.body).toContain('signed out');
+    expect(res.body).not.toContain('Return to application');
   });
 
   it('missing/unresolvable client_id with a redirect uri → signed-out page (no open redirect)', async () => {
@@ -367,6 +381,7 @@ describe('Logout redirect validation (criterion 7)', () => {
     const res = await logout(ctx, { post_logout_redirect_uri: REDIRECT });
     expect(res.statusCode).toBe(200);
     expect(res.headers.location).toBeUndefined();
+    expect(res.body).not.toContain('Return to application');
   });
 });
 
