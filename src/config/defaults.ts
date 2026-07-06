@@ -11,6 +11,9 @@ export const DEFAULTS = {
   tenantId: '11111111-1111-1111-1111-111111111111',
   baseDomain: 'entra.localhost',
   localDomains: [] as readonly string[],
+  // How the advertised origins default: `subdomains` (npm start / SEA binary) advertises
+  // login./portal./graph.<baseDomain>; `compat` (the Docker image) collapses them onto localhost.
+  originMode: 'subdomains',
   dbPath: './data/entra-local.db',
   tlsEnabled: true,
   tlsCertDir: './data/tls',

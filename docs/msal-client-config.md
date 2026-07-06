@@ -12,10 +12,11 @@ Iteration 3 samples (#18–#22). It mirrors the configuration matrix in
 ## Canonical values
 
 `<origin>` is the **login** origin the emulator advertises. With the default local domains (#26)
-that is `https://login.entra.localhost:8443`; on the backward-compat loopback origin it is
-`https://localhost:8443` (legacy `PUBLIC_ORIGIN` mode collapses every surface onto one host). Pick
-one origin per client and use it consistently — MSAL validates that the discovery `issuer` matches
-the configured authority.
+that is `https://login.entra.localhost:8443` for `npm start` / the SEA binary; the **Docker image**
+defaults to the loopback compat origin `https://localhost:8443` (`ORIGIN_MODE=compat`), and the
+legacy `PUBLIC_ORIGIN` mode likewise collapses every surface onto one host. Pick one origin per
+client and use it consistently — MSAL validates that the discovery `issuer` matches the configured
+authority.
 
 - **Authority:** `<origin>/<tenantId>` — e.g. `https://login.entra.localhost:8443/11111111-1111-1111-1111-111111111111`.
 - **Tenant id:** `11111111-1111-1111-1111-111111111111` (fixed).

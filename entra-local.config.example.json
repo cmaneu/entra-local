@@ -4,6 +4,7 @@
   "tenantId": "11111111-1111-1111-1111-111111111111",
   "baseDomain": "entra.localhost",
   "localDomains": [],
+  "originMode": "subdomains",
   "dbPath": "./data/entra-local.db",
   "tls": {
     "enabled": true,

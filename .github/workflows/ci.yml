@@ -103,6 +103,12 @@ jobs:
         run: pnpm run build
 
       - name: Start emulator (seeded, TLS) on :8443
+        env:
+          # Local domains (#26) made login./portal./graph. subdomains the default advertised
+          # origin. This sample's API + SPA use the loopback compat origin, so collapse every
+          # surface back onto https://localhost:8443 (issuer, authorize, token) — otherwise MSAL
+          # is redirected to non-resolving subdomains and the API's issuer check rejects the token.
+          PUBLIC_ORIGIN: https://localhost:8443
         run: |
           nohup pnpm start > emulator.log 2>&1 &
           echo "EMULATOR_PID=$!" >> "$GITHUB_ENV"
@@ -187,6 +193,10 @@ jobs:
         run: pnpm run build
 
       - name: Start emulator (seeded, TLS) on :8443
+        env:
+          # See the note in the full-stack job: this device-code sample uses the loopback compat
+          # origin, so collapse the local-domains subdomains (#26) back onto https://localhost:8443.
+          PUBLIC_ORIGIN: https://localhost:8443
         run: |
           nohup pnpm start > emulator.log 2>&1 &
           echo "EMULATOR_PID=$!" >> "$GITHUB_ENV"
@@ -246,6 +256,12 @@ jobs:
           body=$(curl -ksS https://localhost:8443/health)
           echo "$body"
           echo "$body" | grep -q '"status":"ok"'
+
+      - name: Image advertises the localhost compat origin by default (ORIGIN_MODE=compat)
+        run: |
+          disc=$(curl -ksS https://localhost:8443/11111111-1111-1111-1111-111111111111/v2.0/.well-known/openid-configuration)
+          echo "$disc"
+          echo "$disc" | grep -q '"issuer":"https://localhost:8443/11111111-1111-1111-1111-111111111111/v2.0"'
 
       - name: Portal is served at /
         run: curl -ksS https://localhost:8443/ | grep -q 'id="root"'

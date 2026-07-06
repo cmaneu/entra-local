@@ -109,6 +109,45 @@ describe('loadConfig — defaults & shape (criterion 2)', () => {
     expect(config.origins.graph).toBe('https://graph.entra.localhost:8443');
   });
 
+  it('collapses every origin onto localhost with ORIGIN_MODE=compat (Docker default)', () => {
+    const config = loadConfig(baseEnv({ ORIGIN_MODE: 'compat' }));
+    expect(config.origins).toEqual({
+      login: 'https://localhost:8443',
+      portal: 'https://localhost:8443',
+      graph: 'https://localhost:8443',
+    });
+    expect(config.publicOrigin).toBe('https://localhost:8443');
+    expect(config.issuer).toBe(`https://localhost:8443/${DEFAULTS.tenantId}/v2.0`);
+  });
+
+  it('derives the compat origin port from PORT (not hardcoded)', () => {
+    const config = loadConfig(baseEnv({ ORIGIN_MODE: 'compat', PORT: '9000' }));
+    expect(config.origins.login).toBe('https://localhost:9000');
+    expect(config.issuer).toBe(`https://localhost:9000/${DEFAULTS.tenantId}/v2.0`);
+  });
+
+  it('uses the http scheme for the compat origin when TLS is disabled', () => {
+    const config = loadConfig(baseEnv({ ORIGIN_MODE: 'compat', TLS_ENABLED: 'false' }));
+    expect(config.origins.login).toBe('http://localhost:8443');
+  });
+
+  it('lets PUBLIC_ORIGIN and per-surface overrides win over ORIGIN_MODE=compat', () => {
+    const withPublic = loadConfig(
+      baseEnv({ ORIGIN_MODE: 'compat', PUBLIC_ORIGIN: 'https://entra.localtest.me:8443' }),
+    );
+    expect(withPublic.origins.login).toBe('https://entra.localtest.me:8443');
+
+    const withSurface = loadConfig(
+      baseEnv({ ORIGIN_MODE: 'compat', GRAPH_ORIGIN: 'https://graph.entra.localhost:8443' }),
+    );
+    expect(withSurface.origins.login).toBe('https://localhost:8443');
+    expect(withSurface.origins.graph).toBe('https://graph.entra.localhost:8443');
+  });
+
+  it('rejects an unknown ORIGIN_MODE value', () => {
+    expect(() => loadConfig(baseEnv({ ORIGIN_MODE: 'bogus' }))).toThrow(ConfigError);
+  });
+
   it('parses LOCAL_DOMAINS as a comma-separated list', () => {
     const config = loadConfig(baseEnv({ LOCAL_DOMAINS: 'entra.example, foo.localhost ,' }));
     expect(config.localDomains).toEqual(['entra.example', 'foo.localhost']);

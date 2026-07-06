@@ -8,6 +8,7 @@ import { Button } from '../components/Button';
 import { CertTrustCard } from '../components/CertTrustCard';
 import { ConfirmDialog } from '../components/Dialog';
 import { EndpointRow } from '../components/EndpointRow';
+import { LocalDomainsCard } from '../components/LocalDomainsCard';
 import { IdChip } from '../components/IdChip';
 import { StatTile } from '../components/StatTile';
 import { StatusDot } from '../components/StatusDot';
@@ -146,6 +147,10 @@ export function Dashboard(): JSX.Element {
             <p className="muted b-sm">Endpoints unavailable — emulator unreachable.</p>
           )}
         </div>
+      </div>
+
+      <div style={{ marginTop: 16 }}>
+        <LocalDomainsCard />
       </div>
 
       <div style={{ marginTop: 16 }}>

@@ -27,3 +27,6 @@ services:
     environment:
       # Seed the deterministic demo directory (incl. this sample's …0004 / …0005 apps) on first boot.
       SEED_ON_START: 'true'
+      # No PUBLIC_ORIGIN needed: the image defaults to ORIGIN_MODE=compat, so every surface (issuer,
+      # authorize, token, Graph) is advertised on https://localhost:8443 — matching this sample's
+      # SPA + API, which target the loopback origin and can't add hosts entries from the container.

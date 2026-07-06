@@ -24,9 +24,14 @@ RUN corepack enable && pnpm install --frozen-lockfile --prod
 #     compiled server (dist/), the prebuilt portal asset (portal/dist/index.html, served as a
 #     static file), prod node_modules, and package.json (read by version + SPA fallback). ---
 FROM ${NODE_IMAGE} AS runtime
+# ORIGIN_MODE=compat: the container cannot make `*.entra.localhost` resolve on the host, so the
+# image advertises the `localhost` compat origin by default (issuer/authorize/token/Graph all on
+# localhost, derived from PORT). `npm start` / the SEA binary keep the `subdomains` default. Opt
+# into subdomains here with `-e ORIGIN_MODE=subdomains` after mapping the names on the host.
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
-    PORT=8443
+    PORT=8443 \
+    ORIGIN_MODE=compat
 WORKDIR /app
 
 COPY --from=deps --chown=node:node /app/node_modules ./node_modules
