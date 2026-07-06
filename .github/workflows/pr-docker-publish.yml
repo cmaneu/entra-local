@@ -1,0 +1,142 @@
+# PR Docker Publish: when a maintainer comments `/docker-publish`, `/docker publish`, or
+# `#docker publish` on a pull request, build the Docker image from the PR head commit and
+# push it to the GitHub Container Registry tagged with the commit SHA and a `dev-pr-{N}` tag.
+# When the PR is merged, the `dev-pr-{N}` image versions are automatically deleted from GHCR.
+name: PR Docker Publish
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request:
+    types: [closed]
+
+# Write packages to push/delete GHCR images; write pull-requests to post the result comment.
+permissions:
+  contents: read
+  packages: write
+  pull-requests: write
+
+jobs:
+  docker-publish:
+    # Only run for PR comments (issues lack the `pull_request` key) that contain one of the
+    # recognised trigger phrases. GitHub Actions `contains()` is case-insensitive by default.
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request != null &&
+      (
+        contains(github.event.comment.body, '/docker-publish') ||
+        contains(github.event.comment.body, '/docker publish') ||
+        contains(github.event.comment.body, '#docker publish')
+      )
+    runs-on: ubuntu-latest
+    steps:
+      # The `issue_comment` event runs in the default-branch context; look up the PR head SHA
+      # explicitly so we check out (and build) the actual PR commit.
+      - name: Resolve PR head SHA and number
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(gh api "${{ github.event.issue.pull_request.url }}" --jq '.head.sha')
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "number=${{ github.event.issue.number }}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr.outputs.sha }}
+
+      - name: Derive image name, short SHA, and PR tag
+        id: meta
+        shell: bash
+        run: |
+          echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+          sha="${{ steps.pr.outputs.sha }}"
+          echo "short_sha=${sha:0:7}" >> "$GITHUB_OUTPUT"
+          echo "pr_tag=dev-pr-${{ steps.pr.outputs.number }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build image
+        run: docker build -t entra-local:pr .
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      # Tag with both the full commit SHA and the PR mutable tag.
+      # The PR tag always points to the latest publish for this PR; the SHA tag is immutable.
+      # Never move or create the `latest` tag.
+      - name: Tag and push image
+        shell: bash
+        run: |
+          image="${{ steps.meta.outputs.image }}"
+          sha="${{ steps.pr.outputs.sha }}"
+          pr_tag="${{ steps.meta.outputs.pr_tag }}"
+          docker tag entra-local:pr "$image:$sha"
+          docker push "$image:$sha"
+          docker tag entra-local:pr "$image:$pr_tag"
+          docker push "$image:$pr_tag"
+
+      # Report the published reference back to the PR so reviewers can pull it immediately.
+      # Write the body to a temp file to avoid shell quoting issues with the multi-line string.
+      - name: Comment on PR with image reference
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          image="${{ steps.meta.outputs.image }}"
+          sha="${{ steps.pr.outputs.sha }}"
+          short_sha="${{ steps.meta.outputs.short_sha }}"
+          pr_tag="${{ steps.meta.outputs.pr_tag }}"
+          body_file=$(mktemp)
+          {
+            echo "🐳 Docker image published for commit \`${short_sha}\` (PR #${{ steps.pr.outputs.number }}):"
+            echo ""
+            echo '```bash'
+            echo "docker pull ${image}:${pr_tag}"
+            echo "docker run -p 8443:8443 -v entra-local-data:/app/data ${image}:${pr_tag}"
+            echo '```'
+            echo ""
+            echo "Tagged as:"
+            echo "- \`${image}:${pr_tag}\` — always points to the latest publish for this PR"
+            echo "- \`${image}:${sha}\` — pinned to this exact commit"
+            echo ""
+            echo "> These dev images are deleted automatically when the PR is merged."
+          } > "$body_file"
+          gh pr comment "${{ steps.pr.outputs.number }}" \
+            --repo "${{ github.repository }}" \
+            --body-file "$body_file"
+          rm -f "$body_file"
+
+  # Delete the PR's dev image versions from GHCR when the PR is merged.
+  docker-cleanup:
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete PR image versions from GHCR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          package_name="${GITHUB_REPOSITORY#*/}"
+          pr_tag="dev-pr-${{ github.event.pull_request.number }}"
+          owner_type=$(gh api "/repos/${GITHUB_REPOSITORY}" --jq '.owner.type')
+
+          if [ "$owner_type" = "Organization" ]; then
+            base_url="/orgs/${GITHUB_REPOSITORY_OWNER}/packages/container/${package_name}"
+          else
+            base_url="/user/packages/container/${package_name}"
+          fi
+
+          # Find all versions that carry the PR tag and delete them.
+          version_ids=$(gh api --paginate "${base_url}/versions" \
+            --jq ".[] | select(.metadata.container.tags | contains([\"${pr_tag}\"])) | .id")
+
+          if [ -z "$version_ids" ]; then
+            echo "No image versions found for tag ${pr_tag} — nothing to delete."
+            exit 0
+          fi
+
+          while read -r id; do
+            echo "Deleting package version ${id} (tag: ${pr_tag})"
+            gh api --method DELETE "${base_url}/versions/${id}"
+          done <<< "$version_ids"
+          echo "Cleaned up image tag ${pr_tag}."
+

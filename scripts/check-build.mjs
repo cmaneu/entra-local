@@ -18,7 +18,7 @@ if (missing.length > 0) {
   const list = missing.map(({ label }) => `  - ${label}`).join('\n');
   process.stderr.write(
     `Cannot start: build output is missing:\n${list}\n\n` +
-      `Run \`npm run build\` first (or use \`npm run dev\` for the source/reload workflow).\n`,
+      `Run \`pnpm run build\` first (or use \`pnpm run dev\` for the source/reload workflow).\n`,
   );
   process.exit(1);
 }

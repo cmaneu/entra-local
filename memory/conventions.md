@@ -163,3 +163,9 @@ request is treated as `compat`.
   against a non-collapsed `buildTestApp({ origins })`; real-MSAL e2e and the `samples/**` keep using
   the `localhost` compat origin so they need no hosts-file changes (subdomain behavior is covered by
   the injected-Host integration tests).
+### Package manager
+The project uses **pnpm** (≥ 9) as its package manager. `pnpm-lock.yaml` is the committed
+lockfile; `package-lock.json` is not used. Build scripts that invoke sub-scripts use `pnpm run
+<script>`. The `pnpm-workspace.yaml` at the repo root holds pnpm-level config (currently:
+`allowBuilds` for esbuild). Sample apps under `samples/` are standalone npm projects and are
+explicitly excluded from the pnpm workspace — they keep their own `package-lock.json` and use npm.

@@ -5,8 +5,10 @@
   "description": "A local, MSAL-compatible emulator of Microsoft Entra ID for application developers.",
   "type": "module",
   "license": "MIT",
+  "packageManager": "pnpm@11.5.2",
   "engines": {
-    "node": ">=22.13"
+    "node": ">=22.13",
+    "pnpm": ">=9"
   },
   "main": "dist/index.js",
   "bin": {
@@ -15,7 +17,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "dev:portal": "vite --config portal/vite.config.ts",
-    "build": "npm run build:server && npm run build:portal",
+    "build": "pnpm run build:server && pnpm run build:portal",
     "build:server": "tsc -p tsconfig.json",
     "build:portal": "node scripts/build-portal.mjs",
     "build:sea": "node scripts/build-sea.mjs",
@@ -54,6 +56,7 @@
     "esbuild": "^0.28.1",
     "eslint": "^9.18.0",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^14.0.0",
     "jsdom": "^25.0.1",
     "playwright": "^1.49.1",
     "postject": "^1.0.0-alpha.6",
