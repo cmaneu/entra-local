@@ -269,11 +269,15 @@ Dashboard "Version" card.
 ### Certificate trust
 
 The emulator serves HTTPS with an auto-generated, persisted **self-signed** certificate
-(CN=`localhost`, SANs for `localhost`/`127.0.0.1`/`::1`), so clients must trust it or relax
-verification **in dev only**:
+(CN=`localhost`, OU=`Entra Local emulator`, SANs for `localhost`/`127.0.0.1`/`::1`), so clients must
+trust it or relax verification **in dev only**:
 
-- **Trust it with the built-in command (recommended):** the emulator can tell you exactly what to
-  run for your OS — or run it for you:
+- **Trust it from the portal (works everywhere, including Docker):** open the portal Dashboard and
+  use the **Trust the certificate** section to download the cert and copy a ready-made trust script
+  for Windows, macOS, or Linux. The certificate PEM is also exposed at
+  `/admin/api/certificate/pem` (metadata at `/admin/api/certificate`).
+- **Trust it with the built-in command (recommended for source/binary):** the emulator can tell you
+  exactly what to run for your OS — or run it for you:
 
   ```bash
   pnpm start -- trust            # print the platform trust command + NODE_EXTRA_CA_CERTS hint
