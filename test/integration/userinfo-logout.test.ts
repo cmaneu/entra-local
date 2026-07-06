@@ -46,12 +46,9 @@ function extractSignedState(html: string): string {
 }
 
 function extractReturnToApplicationLink(html: string): string | undefined {
-  const m = /href="([^"]+)">Return to application<\/a>/.exec(html);
+  const m = /href="([^"]+)"[^>]*>\s*Return to application<\/a>/s.exec(html);
   if (!m) return undefined;
-  return m[1]!
-    .replace(/&amp;/g, '&')
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"');
+  return m[1]!.replace(/&amp;/g, '&');
 }
 
 interface TokenSet {

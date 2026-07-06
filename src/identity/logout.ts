@@ -107,6 +107,10 @@ function handleLogout(request: FastifyRequest, reply: FastifyReply, ctx: LogoutC
 
   // 3) Validated: keep the signed-out page, but offer a return link (echoing `state` if provided).
   const target = new URL(postLogoutRedirectUri);
+  if (target.protocol !== 'http:' && target.protocol !== 'https:') {
+    renderSignedOut(reply, ctx);
+    return;
+  }
   const state = getParam(query, 'state');
   if (state !== undefined) target.searchParams.append('state', state);
   renderSignedOut(reply, ctx, target.toString());
