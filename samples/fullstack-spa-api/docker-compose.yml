@@ -1,17 +1,25 @@
-# Optional: launch ONLY the Entra Local emulator for this sample.
+# Full-stack sample, fully containerized: emulator + protected API + SPA — all in Docker.
 #
-# The SPA and API still run with their normal npm commands (kept consistent with the other
-# samples). This compose file just saves you from starting the emulator separately.
+# Unlike the other samples' compose files (which start only the emulator), this one builds and runs
+# every tier so you can exercise the whole flow with a single command.
 #
 # Usage:
-#   docker compose up -d            # build + start the emulator on https://localhost:8443
-#   # → the dev certificate is written to ./.emulator-data/tls/cert.pem on the host.
-#   docker compose down             # stop it (add -v to also wipe ./.emulator-data)
+#   docker compose up --build       # build + start emulator, API, and SPA
+#   docker compose down             # stop everything (add -v to also wipe ./.emulator-data)
 #
-# Then point the API at the mounted certificate:
-#   # from samples/fullstack-spa-api/api
-#   $env:NODE_EXTRA_CA_CERTS = "../.emulator-data/tls/cert.pem"   # PowerShell
-#   export NODE_EXTRA_CA_CERTS=../.emulator-data/tls/cert.pem      # bash/zsh
+# Then open http://localhost:5173 in your browser, sign in as alice@entralocal.dev (Password1!),
+# and click "Load todos".
+#
+#   Emulator : https://localhost:8443   (issuer / authorize / token / JWKS — self-signed dev cert)
+#   API      : http://localhost:4000    (protected Express resource server)
+#   SPA      : http://localhost:5173    ← open this one
+#
+# Networking note — why the API has no `ports:` of its own:
+#   The access token's issuer is https://localhost:8443 (the emulator runs in ORIGIN_MODE=compat).
+#   For the API to BOTH validate that issuer AND fetch the JWKS from the same origin, it shares the
+#   emulator's network namespace (`network_mode: "service:emulator"`). Inside that shared stack,
+#   `localhost:8443` reaches the emulator and `localhost:4000` is the API itself. Because the API
+#   has no network of its own, its published port (4000) is declared on the `emulator` service.
 
 services:
   emulator:
@@ -20,9 +28,10 @@ services:
       dockerfile: Dockerfile
     image: entra-local
     ports:
-      - '8443:8443'
+      - '8443:8443' # emulator surfaces (issuer / authorize / token / Graph / JWKS)
+      - '4000:4000' # the API shares this network namespace (see `api.network_mode` below)
     volumes:
-      # Persists the SQLite DB + TLS cert; exposes cert.pem to the host for the API's JWKS trust.
+      # Persists the SQLite DB + TLS cert; also exposes cert.pem to the host and the API container.
       - ./.emulator-data:/app/data
     environment:
       # Seed the deterministic demo directory (incl. this sample's …0004 / …0005 apps) on first boot.
@@ -30,3 +39,37 @@ services:
       # No PUBLIC_ORIGIN needed: the image defaults to ORIGIN_MODE=compat, so every surface (issuer,
       # authorize, token, Graph) is advertised on https://localhost:8443 — matching this sample's
       # SPA + API, which target the loopback origin and can't add hosts entries from the container.
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    image: entra-local-sample-fullstack-api
+    # Share the emulator's network stack so `localhost:8443` reaches the emulator — the SAME origin
+    # the browser uses and the SAME issuer baked into the token. The API therefore declares no
+    # `ports:` of its own; port 4000 is published on the `emulator` service above.
+    network_mode: 'service:emulator'
+    environment:
+      PORT: '4000'
+      # Issuer + JWKS origin the API validates/fetches (reached via the shared network namespace).
+      EMULATOR_ORIGIN: https://localhost:8443
+      # Trust the emulator's dev cert (written into the shared data volume) for the JWKS fetch.
+      EMULATOR_CA_CERT: /emulator-data/tls/cert.pem
+      # CORS: allow the SPA origin (as seen by the browser).
+      SPA_ORIGIN: http://localhost:5173
+    volumes:
+      - ./.emulator-data:/emulator-data:ro
+    depends_on:
+      emulator:
+        condition: service_healthy
+
+  spa:
+    build:
+      context: ./spa
+      dockerfile: Dockerfile
+    image: entra-local-sample-fullstack-spa
+    ports:
+      - '5173:5173'
+    depends_on:
+      api:
+        condition: service_healthy

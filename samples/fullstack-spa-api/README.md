@@ -81,8 +81,8 @@ so the configs below work with no admin-portal steps.
   # bash / zsh
   ORIGIN_MODE=compat npm start   # serves https://localhost:8443, seeds the demo directory on first boot
   ```
-  …or use the [optional docker compose](#optional-docker-compose) in this folder (the image already
-  defaults to `ORIGIN_MODE=compat`).
+  …or skip the local setup entirely and [run everything in Docker](#run-everything-in-docker-compose)
+  (emulator + API + SPA), where the image already defaults to `ORIGIN_MODE=compat`.
 
   > **Prefer the faithful local-domains setup?** Run `entra-local hosts --apply`, leave the emulator
   > in its default subdomains mode, and set `VITE_EMULATOR_ORIGIN` (SPA) and `EMULATOR_ORIGIN` (API)
@@ -105,8 +105,9 @@ Open **three** terminals: emulator, API, SPA.
 > npm run dev     # starts the API (:4000) and SPA (:5173) in parallel
 > ```
 >
-> You still start the emulator in its own terminal (step 1 below, or the optional docker compose).
-> The per-tier commands in steps 2–3 keep working if you prefer separate terminals.
+> You still start the emulator in its own terminal (step 1 below), or
+> [run all three tiers in Docker](#run-everything-in-docker-compose). The per-tier commands in
+> steps 2–3 keep working if you prefer separate terminals.
 
 ### 1. Emulator (terminal 1, from the repo root)
 
@@ -289,18 +290,30 @@ redirect URIs **exactly**.
 
 ---
 
-## Optional: docker compose
+## Run everything in Docker (compose)
 
-[`docker-compose.yml`](./docker-compose.yml) in this folder launches **only the emulator** (the SPA
-and API still run via their npm commands, for consistency with the other samples):
+[`docker-compose.yml`](./docker-compose.yml) in this folder builds and runs **all three tiers** —
+emulator, API, and SPA — so you can exercise the full flow with a single command (no local Node
+install or per-terminal setup):
 
 ```bash
-docker compose up -d        # emulator on https://localhost:8443
-# cert.pem is written to ./.emulator-data/tls/cert.pem on the host
-docker compose down         # add -v to also delete ./.emulator-data
+docker compose up --build   # emulator (:8443) + API (:4000) + SPA (:5173)
+docker compose down         # stop all three (add -v to also delete ./.emulator-data)
 ```
 
-Then point the API at the compose cert: `EMULATOR_CA_CERT=../.emulator-data/tls/cert.pem`.
+Then open <http://localhost:5173>, sign in as `alice@entralocal.dev` (`Password1!`), and click
+**Load todos**. Certificate trust is wired automatically: the emulator writes its dev cert into the
+shared `./.emulator-data` volume and the API trusts it for the JWKS fetch.
+
+> **Why the API has no `ports:` of its own.** The token issuer is `https://localhost:8443` (the
+> emulator runs in `ORIGIN_MODE=compat`). So the API can both **validate** that issuer and **fetch**
+> the JWKS from the same origin, it shares the emulator's network namespace
+> (`network_mode: "service:emulator"`) — inside that shared stack `localhost:8443` is the emulator
+> and `localhost:4000` is the API. Because the API has no network of its own, its published port
+> (`4000`) is declared on the `emulator` service.
+
+> The **SPA in the browser** still reaches the emulator over HTTPS at `https://localhost:8443`, so
+> accept the one-time self-signed-cert warning (or trust the dev cert — see below) on first sign-in.
 
 ---
 
