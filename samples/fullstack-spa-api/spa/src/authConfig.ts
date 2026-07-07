@@ -1,4 +1,9 @@
-import type { Configuration, PopupRequest, RedirectRequest } from '@azure/msal-browser';
+import type {
+  Configuration,
+  EndSessionRequest,
+  PopupRequest,
+  RedirectRequest,
+} from '@azure/msal-browser';
 
 /**
  * SPA configuration for the Entra Local full-stack sample (feature #24).
@@ -15,6 +20,15 @@ const TENANT_ID = import.meta.env.VITE_TENANT_ID ?? '11111111-1111-1111-1111-111
 const CLIENT_ID = import.meta.env.VITE_CLIENT_ID ?? 'cccccccc-0000-0000-0000-000000000004';
 const API_APP_ID = import.meta.env.VITE_API_APP_ID ?? 'cccccccc-0000-0000-0000-000000000005';
 const REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI ?? 'http://localhost:5173';
+
+/**
+ * Where the emulator sends the user back after sign-out. The emulator's end-session endpoint
+ * validates this **exactly** against the redirect URIs registered for the SPA app (`…0004`) and
+ * only then offers a "Return to application" link back to it, so it must match a registered URI.
+ * Defaults to the SPA's own redirect URI.
+ */
+const POST_LOGOUT_REDIRECT_URI =
+  import.meta.env.VITE_POST_LOGOUT_REDIRECT_URI ?? REDIRECT_URI;
 
 /** Base URL of the protected Express API. */
 export const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:4000';
@@ -57,3 +71,18 @@ export const loginRequest: RedirectRequest & PopupRequest = {
 
 /** Token request for the protected API (drives `aud`=API app, `scp`=access_as_user). */
 export const tokenRequest = { scopes: [API_SCOPE] };
+
+/**
+ * Sign-out request. Drives `logoutRedirect` to the emulator's `end_session_endpoint`
+ * (`/{tenant}/oauth2/v2.0/logout`) so the emulator clears its SSO session cookie — a full
+ * front-channel sign-out, not just a local MSAL cache clear.
+ *
+ * The emulator only shows its "Return to application" link when `post_logout_redirect_uri` matches a
+ * redirect URI registered for a resolvable client. `@azure/msal-browser` does not send `client_id`
+ * on logout, so we pass it via `extraQueryParameters` for the emulator to resolve the SPA app
+ * (`…0004`) and validate the post-logout URI against its registered redirect URIs.
+ */
+export const logoutRequest: EndSessionRequest = {
+  postLogoutRedirectUri: POST_LOGOUT_REDIRECT_URI,
+  extraQueryParameters: { client_id: CLIENT_ID },
+};
