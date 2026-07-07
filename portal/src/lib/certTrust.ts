@@ -38,8 +38,16 @@ export function trustScript(platform: TrustPlatform, origin: string): Line[] {
   const url = certPemUrl(origin);
   if (platform === 'windows') {
     return [
-      [com('# Run in PowerShell — downloads the cert with curl.exe, then trusts it in your user Root store.')],
-      [com('# (Use curl.exe explicitly — in PowerShell bare `curl` is an alias for the built-in web cmdlet.)')],
+      [
+        com(
+          '# Run in PowerShell — downloads the cert with curl.exe, then trusts it in your user Root store.',
+        ),
+      ],
+      [
+        com(
+          '# (Use curl.exe explicitly — in PowerShell bare `curl` is an alias for the built-in web cmdlet.)',
+        ),
+      ],
       [s('$cert = "$env:TEMP\\entra-local-ca.crt"')],
       [s('curl.exe -sk '), str(`"${url}"`), s(' -o $cert')],
       [s('Import-Certificate -FilePath $cert -CertStoreLocation Cert:\\CurrentUser\\Root')],
