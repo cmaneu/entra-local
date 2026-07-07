@@ -26,6 +26,24 @@
         <p id="status" data-testid="status" class="status">Not signed in.</p>
       </section>
 
+      <section class="card tls-help" id="tls-help" data-testid="tls-help" hidden>
+        <h2>Can't reach the emulator over HTTPS</h2>
+        <p>
+          The SPA couldn't connect to the emulator at <code id="tls-origin"></code>. This usually
+          means its <strong>self-signed dev certificate isn't trusted by your browser yet</strong>
+          (or the emulator isn't running).
+        </p>
+        <p>
+          Open the emulator portal, accept the one-time certificate warning (or install the dev
+          cert), then come back and try again:
+        </p>
+        <p>
+          <a id="portal-link" data-testid="portal-link" target="_blank" rel="noopener noreferrer"
+            >Open the emulator portal →</a
+          >
+        </p>
+      </section>
+
       <section class="card" id="account-card" hidden>
         <h2>Signed-in account</h2>
         <p id="account" data-testid="account"></p>
