@@ -40,6 +40,9 @@ sequenceDiagram
 3. The API validates the token and returns sample todos plus the claims it read from the token.
 4. The SPA renders the todos and an **Access-token claims** panel showing `aud = …0005`,
    `scp = access_as_user`, and `azp = …0004` — i.e. a token minted **for the API**, **by the SPA**.
+5. Click **Sign out**. The SPA redirects to the emulator's end-session endpoint
+   (`/{tenant}/oauth2/v2.0/logout`) with a `post_logout_redirect_uri`, so the emulator clears its SSO
+   session cookie and shows a signed-out page with a **Return to application** link back to the SPA.
 
 ---
 
@@ -64,14 +67,27 @@ so the configs below work with no admin-portal steps.
 ## Prerequisites
 
 - **Node.js ≥ 22.13** (same as the emulator).
-- The **Entra Local emulator running** on `https://localhost:8443` with its seed data. From the repo
-  root:
+- The **Entra Local emulator running** on `https://localhost:8443` with its seed data. This sample
+  targets the **loopback compat origin**, so start the emulator in **compat mode**
+  (`ORIGIN_MODE=compat`). Since local domains (#26), plain `npm start` defaults to the
+  `login./portal./graph.entra.localhost` subdomains and mints a `login.entra.localhost` issuer;
+  compat mode collapses every surface (issuer, authorize, token, JWKS) back onto
+  `https://localhost:8443`, which is what the SPA and API expect. From the repo root:
   ```bash
   npm install
   npm run build
-  npm start            # serves https://localhost:8443, seeds the demo directory on first boot
+  # PowerShell
+  $env:ORIGIN_MODE = "compat"; npm start
+  # bash / zsh
+  ORIGIN_MODE=compat npm start   # serves https://localhost:8443, seeds the demo directory on first boot
   ```
-  …or use the [optional docker compose](#optional-docker-compose) in this folder.
+  …or use the [optional docker compose](#optional-docker-compose) in this folder (the image already
+  defaults to `ORIGIN_MODE=compat`).
+
+  > **Prefer the faithful local-domains setup?** Run `entra-local hosts --apply`, leave the emulator
+  > in its default subdomains mode, and set `VITE_EMULATOR_ORIGIN` (SPA) and `EMULATOR_ORIGIN` (API)
+  > to `https://login.entra.localhost:8443` (see the `.env.example` files). Either way, the SPA and
+  > API must agree with the emulator on the issuer origin.
 - The emulator's **dev certificate trusted** by the API process (see [Certificate trust](#certificate-trust)).
 
 ---
@@ -94,8 +110,16 @@ Open **three** terminals: emulator, API, SPA.
 
 ### 1. Emulator (terminal 1, from the repo root)
 
+Start it in **compat mode** so every surface (issuer, authorize, token, JWKS) is advertised on the
+loopback origin this sample targets. With the local-domains default (#26), the emulator instead
+advertises the `login.entra.localhost` subdomain, so MSAL mints a token whose `iss` is
+`https://login.entra.localhost:8443/…` and the API rejects it with an `iss` mismatch.
+
 ```bash
-npm start
+# PowerShell
+$env:ORIGIN_MODE = "compat"; npm start
+# bash / zsh
+ORIGIN_MODE=compat npm start
 ```
 
 This generates the dev TLS certificate at `data/tls/cert.pem` on first boot.
@@ -203,6 +227,7 @@ Vite **auto-loads** `spa/.env`. All have defaults that match the seed.
 | `VITE_CLIENT_ID`       | `cccccccc-0000-0000-0000-000000000004`   | The SPA app registration.                 |
 | `VITE_API_APP_ID`      | `cccccccc-0000-0000-0000-000000000005`   | Used to build the API scope.              |
 | `VITE_REDIRECT_URI`    | `http://localhost:5173`                  | Must match the seeded redirect URI.       |
+| `VITE_POST_LOGOUT_REDIRECT_URI` | `${VITE_REDIRECT_URI}`          | Sign-out return target; must match a registered redirect URI of app `…0004`. |
 | `VITE_API_BASE`        | `http://localhost:4000`                  | Where the SPA calls the API.              |
 | `VITE_API_SCOPE`       | `api://${VITE_API_APP_ID}/access_as_user`| The scope requested for the API token.    |
 | `VITE_API_ADMIN_SCOPE` | `api://${VITE_API_APP_ID}/access_as_admin`| Second scope requested at sign-in; used to demonstrate the 403 path. |
@@ -284,6 +309,7 @@ Then point the API at the compose cert: `EMULATOR_CA_CERT=../.emulator-data/tls/
 | Symptom                                                       | Cause & fix                                                                                                   |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
 | API logs `unable to verify the first certificate` / JWKS 500 | The API can't read/trust the emulator cert. The startup banner prints the cert path and a JWKS probe result. Set `EMULATOR_CA_CERT` to the emulator's `cert.pem` (see Certificate trust).   |
+| API returns **401** with `unexpected "iss" claim value` (token `iss` = `https://login.entra.localhost:8443/…`) | The emulator is running in the local-domains default (#26) and mints a `login.entra.localhost` issuer, but this sample targets the loopback origin. Start the emulator with `ORIGIN_MODE=compat` (step 1), **or** run `entra-local hosts --apply` and set `EMULATOR_ORIGIN` + `VITE_EMULATOR_ORIGIN` to `https://login.entra.localhost:8443` in both tiers. |
 | API returns **401** for a token you expect to be valid       | Wrong `aud` (token not minted for `…0005`) or wrong issuer. Confirm the SPA requested `api://…0005/access_as_user`. |
 | API returns **403**                                          | Token is valid but `scp` is missing `access_as_user`. Check the SPA's `VITE_API_SCOPE`.                       |
 | Browser blocks the API call (CORS)                           | The API only allows `SPA_ORIGIN` (default `http://localhost:5173`). Update it if the SPA runs elsewhere.      |

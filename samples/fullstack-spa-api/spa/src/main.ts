@@ -4,7 +4,7 @@ import {
   type AccountInfo,
   type AuthenticationResult,
 } from '@azure/msal-browser';
-import { API_BASE, loginRequest, msalConfig, tokenRequest } from './authConfig.js';
+import { API_BASE, loginRequest, logoutRequest, msalConfig, tokenRequest } from './authConfig.js';
 
 /**
  * Smoke hook: the CI Playwright test reads `window.__smoke` to assert the end-to-end flow without
@@ -183,8 +183,11 @@ async function main(): Promise<void> {
   });
   els.signout.addEventListener('click', () => {
     const account = pca.getActiveAccount() ?? undefined;
-    // Clear the local MSAL cache without a network round-trip to the emulator logout endpoint.
-    void pca.logoutRedirect({ account, onRedirectNavigate: () => false }).then(renderSignedOut);
+    // Full front-channel sign-out: navigate to the emulator's end-session endpoint so it clears its
+    // SSO session cookie (not just the local MSAL cache), then returns here via the "Return to
+    // application" link on the emulator's signed-out page. MSAL clears the local cache before
+    // navigating, so on return the SPA renders the signed-out state.
+    void pca.logoutRedirect({ ...logoutRequest, account });
   });
   els.loadTodos.addEventListener('click', () => {
     void loadTodos();
