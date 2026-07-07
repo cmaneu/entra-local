@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { api } from '../api/client';
 import { useAsync } from '../hooks/useAsync';
-import { useEmulator } from './EmulatorContext';
 import { Banner } from './Banner';
 import { CodeBlock } from './CodeBlock';
 import { IdChip } from './IdChip';
@@ -22,7 +21,6 @@ import {
  * have no host CLI, so the portal hands them the exact script to run on their machine instead.
  */
 export function CertTrustCard(): JSX.Element | null {
-  const { discovery } = useEmulator();
   const [platform, setPlatform] = useState<TrustPlatform>(detectPlatform);
   const cert = useAsync(
     useCallback(() => api.certificate(), []),
@@ -34,7 +32,12 @@ export function CertTrustCard(): JSX.Element | null {
     return null;
   }
 
-  const origin = discovery ? new URL(discovery.issuer).origin : window.location.origin;
+  // Download the cert + build the trust script from the origin the portal is actually served on
+  // (the `portal.`/compat host the browser reached), which resolves and serves
+  // `/admin/api/certificate/pem`. Deriving it from the discovery issuer would use the `login.`
+  // origin, which may not resolve on the client and 404s the admin API anyway; the wildcard cert is
+  // identical on every host.
+  const origin = window.location.origin;
   const info = cert.data?.enabled ? cert.data : undefined;
 
   return (

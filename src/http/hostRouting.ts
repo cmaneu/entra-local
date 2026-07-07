@@ -70,6 +70,17 @@ function isGraphPath(path: string): boolean {
   return path === '/graph' || path.startsWith('/graph/');
 }
 
+/**
+ * The read-only OIDC discovery document (`/{tenant}/v2.0/.well-known/openid-configuration`). It is a
+ * login-slice path, but the **portal host serves it too** so the admin SPA can load discovery
+ * same-origin: a cross-origin fetch to the login host would fail unless that host's self-signed cert
+ * is separately trusted (browsers can't prompt for a cert on a background `fetch`). The document
+ * still advertises the login-origin endpoints, so clients are unaffected.
+ */
+function isDiscoveryPath(path: string): boolean {
+  return /^\/[^/]+\/v2\.0\/\.well-known\/openid-configuration$/.test(path);
+}
+
 /** Portal-API slice: the admin REST API + the health probe. */
 function isPortalApiPath(path: string): boolean {
   if (path === '/health') return true;
@@ -151,6 +162,7 @@ export function enforceHostRouting(app: FastifyInstance, router: HostRouter, con
           ? isGraphPath(path)
           : // portal: its API/health, plus any non-reserved GET → the SPA shell.
             isPortalApiPath(path) ||
+            isDiscoveryPath(path) ||
             (request.method === 'GET' && !isLoginPath(path) && !isGraphPath(path));
 
     if (allowed) return;

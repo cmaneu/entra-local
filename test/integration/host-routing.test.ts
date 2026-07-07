@@ -107,11 +107,21 @@ describe('Host routing: portal. host', () => {
     expect(res.headers['content-type']).toContain('text/html');
   });
 
-  it('404s a login discovery path (cross-slice)', async () => {
+  it('serves OIDC discovery same-origin (so the SPA loads without a cross-origin login fetch)', async () => {
     ctx = await buildHostRoutedApp();
     const res = await ctx.inject({
       method: 'GET',
       url: DISCOVERY,
+      headers: { host: HOSTS.portal },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('still 404s other login paths like /authorize (only discovery is shared)', async () => {
+    ctx = await buildHostRoutedApp();
+    const res = await ctx.inject({
+      method: 'GET',
+      url: `/${TEST_TENANT_ID}/oauth2/v2.0/authorize`,
       headers: { host: HOSTS.portal },
     });
     expect(res.statusCode).toBe(404);

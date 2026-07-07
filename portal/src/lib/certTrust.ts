@@ -31,22 +31,17 @@ const str = (t: string): Tok => ({ t, k: 'str' });
  * Build a self-contained "download + trust" script for the given platform + emulator origin. The
  * script downloads the cert over the emulator's own (not-yet-trusted) origin while skipping
  * certificate validation — safe here because the downloaded file is exactly the cert being trusted,
- * and its fingerprint is shown in the UI for verification. Windows uses PowerShell-native cmdlets
- * (`Invoke-WebRequest` + `Import-Certificate`) so it works without `curl.exe`.
+ * and its fingerprint is shown in the UI for verification. Every platform downloads with `curl`
+ * (`curl.exe` on Windows 10 1803+, aliased away from PowerShell's `Invoke-WebRequest`).
  */
 export function trustScript(platform: TrustPlatform, origin: string): Line[] {
   const url = certPemUrl(origin);
   if (platform === 'windows') {
     return [
-      [com('# Run in PowerShell — downloads the cert, then trusts it in your user Root store.')],
+      [com('# Run in PowerShell — downloads the cert with curl.exe, then trusts it in your user Root store.')],
+      [com('# (Use curl.exe explicitly — in PowerShell bare `curl` is an alias for the built-in web cmdlet.)')],
       [s('$cert = "$env:TEMP\\entra-local-ca.crt"')],
-      [s('if ($PSVersionTable.PSVersion.Major -ge 6) {')],
-      [s('  Invoke-WebRequest -Uri '), str(`"${url}"`), s(' -OutFile $cert -SkipCertificateCheck')],
-      [s('} else {')],
-      [s('  [Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }')],
-      [s('  Invoke-WebRequest -Uri '), str(`"${url}"`), s(' -OutFile $cert -UseBasicParsing')],
-      [s('  [Net.ServicePointManager]::ServerCertificateValidationCallback = $null')],
-      [s('}')],
+      [s('curl.exe -sk '), str(`"${url}"`), s(' -o $cert')],
       [s('Import-Certificate -FilePath $cert -CertStoreLocation Cert:\\CurrentUser\\Root')],
     ];
   }

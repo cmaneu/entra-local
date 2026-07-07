@@ -13,10 +13,11 @@ describe('certTrust', () => {
     expect(TRUST_PLATFORMS.map((p) => p.id)).toEqual(['windows', 'macos', 'linux']);
   });
 
-  it('emits a PowerShell-native Windows script (no curl.exe) that downloads then trusts the cert', () => {
+  it('emits a Windows script that downloads with curl.exe then trusts the cert', () => {
     const text = snippetText(trustScript('windows', ORIGIN));
-    expect(text).not.toContain('curl');
-    expect(text).toContain('Invoke-WebRequest');
+    // curl.exe (not the `curl` alias for Invoke-WebRequest) so the download works on Windows 10+.
+    expect(text).toContain('curl.exe -sk');
+    expect(text).not.toContain('Invoke-WebRequest');
     expect(text).toContain(certPemUrl(ORIGIN));
     expect(text).toContain('Import-Certificate');
     expect(text).toContain('Cert:\\CurrentUser\\Root');
