@@ -15,8 +15,8 @@ import type {
  * Every value is overridable through a `VITE_*` env var (see `.env.example`) so the sample runs
  * against a non-default emulator without code changes.
  */
-const EMULATOR_ORIGIN = import.meta.env.VITE_EMULATOR_ORIGIN ?? 'https://localhost:8443';
-const TENANT_ID = import.meta.env.VITE_TENANT_ID ?? '11111111-1111-1111-1111-111111111111';
+export const EMULATOR_ORIGIN = import.meta.env.VITE_EMULATOR_ORIGIN ?? 'https://localhost:8443';
+export const TENANT_ID = import.meta.env.VITE_TENANT_ID ?? '11111111-1111-1111-1111-111111111111';
 const CLIENT_ID = import.meta.env.VITE_CLIENT_ID ?? 'cccccccc-0000-0000-0000-000000000004';
 const API_APP_ID = import.meta.env.VITE_API_APP_ID ?? 'cccccccc-0000-0000-0000-000000000005';
 const REDIRECT_URI = import.meta.env.VITE_REDIRECT_URI ?? 'http://localhost:5173';
@@ -32,6 +32,20 @@ const POST_LOGOUT_REDIRECT_URI =
 
 /** Base URL of the protected Express API. */
 export const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:4000';
+
+/**
+ * The emulator's OpenID discovery document. The SPA fetches this once on load to detect whether the
+ * emulator is reachable over HTTPS — if the fetch fails with a network error, the emulator's
+ * self-signed dev certificate is most likely not trusted by the browser yet.
+ */
+export const DISCOVERY_URL = `${EMULATOR_ORIGIN}/${TENANT_ID}/v2.0/.well-known/openid-configuration`;
+
+/**
+ * Where to send the user to trust the emulator's dev certificate. In the default (compat / Docker)
+ * setup the emulator serves its portal at the origin root over HTTPS, so opening it triggers the
+ * browser's one-time certificate prompt. Trusting it once covers every emulator surface.
+ */
+export const PORTAL_URL = EMULATOR_ORIGIN;
 
 /**
  * The scope the SPA requests for the API. Because it is fully qualified with the API app's

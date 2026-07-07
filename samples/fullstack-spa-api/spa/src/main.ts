@@ -1,10 +1,20 @@
 import {
+  BrowserAuthError,
   InteractionRequiredAuthError,
   PublicClientApplication,
   type AccountInfo,
   type AuthenticationResult,
 } from '@azure/msal-browser';
-import { API_BASE, loginRequest, logoutRequest, msalConfig, tokenRequest } from './authConfig.js';
+import {
+  API_BASE,
+  DISCOVERY_URL,
+  EMULATOR_ORIGIN,
+  PORTAL_URL,
+  loginRequest,
+  logoutRequest,
+  msalConfig,
+  tokenRequest,
+} from './authConfig.js';
 
 /**
  * Smoke hook: the CI Playwright test reads `window.__smoke` to assert the end-to-end flow without
@@ -18,6 +28,8 @@ interface SmokeState {
   accessTokenClaims?: Record<string, unknown>;
   apiCaller?: Record<string, unknown>;
   error?: string;
+  /** True once the emulator was detected to be unreachable over HTTPS (likely untrusted cert). */
+  tlsError?: boolean;
 }
 declare global {
   interface Window {
@@ -51,6 +63,9 @@ const els = {
   claimsCard: $<HTMLElement>('claims-card'),
   claims: $<HTMLPreElement>('claims'),
   apiCaller: $<HTMLPreElement>('api-caller'),
+  tlsHelp: $<HTMLElement>('tls-help'),
+  tlsOrigin: $<HTMLElement>('tls-origin'),
+  portalLink: $<HTMLAnchorElement>('portal-link'),
 };
 
 const pca = new PublicClientApplication(msalConfig);
@@ -59,6 +74,60 @@ function setStatus(message: string, isError = false): void {
   els.status.textContent = message;
   els.status.classList.toggle('error', isError);
   if (isError) window.__smoke.error = message;
+}
+
+/** MSAL/browser error codes that mean a request to the emulator failed at the network layer. */
+const UNREACHABLE_CODES = new Set([
+  'get_request_failed',
+  'post_request_failed',
+  'openid_config_error',
+  'endpoints_resolution_error',
+  'unable_to_get_openid_config',
+]);
+
+/**
+ * Heuristic: does this error mean the browser could not reach the emulator over HTTPS? In local dev
+ * the usual cause is that the emulator's self-signed certificate is not trusted yet, so a `fetch`
+ * to its discovery/token endpoint rejects with a network `TypeError` ("Failed to fetch") — or MSAL
+ * wraps that as a request-failed error. (An emulator that is simply not running looks the same.)
+ */
+function isEmulatorUnreachable(err: unknown): boolean {
+  if (err instanceof BrowserAuthError && UNREACHABLE_CODES.has(err.errorCode)) return true;
+  if (err instanceof TypeError) return true; // native fetch network failure
+  const msg = err instanceof Error ? err.message.toLowerCase() : '';
+  return (
+    msg.includes('failed to fetch') ||
+    msg.includes('networkerror') ||
+    msg.includes('load failed') ||
+    msg.includes('get_request_failed') ||
+    msg.includes('openid')
+  );
+}
+
+/** Show the "trust the dev certificate via the portal" banner. */
+function showTlsHelp(): void {
+  els.tlsHelp.hidden = false;
+  window.__smoke.tlsError = true;
+}
+
+/** Hide the certificate-trust banner (the emulator is reachable). */
+function hideTlsHelp(): void {
+  els.tlsHelp.hidden = true;
+}
+
+/**
+ * Probe the emulator's discovery document once. A network failure means the browser cannot reach
+ * the emulator over HTTPS (most often an untrusted dev certificate), so we surface the portal-trust
+ * banner proactively — before the user hits the unavoidable full-page certificate warning that a
+ * sign-in redirect would trigger.
+ */
+async function probeEmulator(): Promise<void> {
+  try {
+    const res = await fetch(DISCOVERY_URL, { method: 'GET' });
+    if (res.ok) hideTlsHelp();
+  } catch (err) {
+    if (isEmulatorUnreachable(err)) showTlsHelp();
+  }
 }
 
 /** Decode a JWT payload for display only (no verification — the API does that). */
@@ -151,15 +220,46 @@ async function loadTodos(): Promise<void> {
     els.todosCard.hidden = false;
     setStatus(`API returned 200 OK. Token audience = ${String(claims?.aud ?? 'unknown')}.`);
   } catch (err) {
+    if (isEmulatorUnreachable(err)) {
+      setStatus('Could not reach the emulator over HTTPS to acquire a token.', true);
+      showTlsHelp();
+      return;
+    }
     setStatus(err instanceof Error ? err.message : 'Failed to load todos.', true);
+  }
+}
+
+/** Start an interactive sign-in, surfacing the cert-trust banner if the emulator is unreachable. */
+async function signIn(): Promise<void> {
+  hideTlsHelp();
+  setStatus('Redirecting to the emulator to sign in…');
+  try {
+    await pca.loginRedirect(loginRequest);
+  } catch (err) {
+    if (isEmulatorUnreachable(err)) {
+      setStatus('Could not reach the emulator over HTTPS.', true);
+      showTlsHelp();
+      return;
+    }
+    setStatus(err instanceof Error ? err.message : 'Sign-in failed.', true);
   }
 }
 
 async function main(): Promise<void> {
   await pca.initialize();
 
+  // Wire the certificate-trust banner (origin label + portal link) before anything can show it.
+  els.tlsOrigin.textContent = EMULATOR_ORIGIN;
+  els.portalLink.href = PORTAL_URL;
+
   // Complete a redirect sign-in if we are returning from the emulator.
-  const redirectResult = await pca.handleRedirectPromise();
+  let redirectResult: AuthenticationResult | null = null;
+  try {
+    redirectResult = await pca.handleRedirectPromise();
+  } catch (err) {
+    if (isEmulatorUnreachable(err)) showTlsHelp();
+    else setStatus(err instanceof Error ? err.message : 'Sign-in failed.', true);
+  }
   if (redirectResult?.account) {
     pca.setActiveAccount(redirectResult.account);
   } else {
@@ -179,7 +279,7 @@ async function main(): Promise<void> {
   };
 
   els.signin.addEventListener('click', () => {
-    void pca.loginRedirect(loginRequest);
+    void signIn();
   });
   els.signout.addEventListener('click', () => {
     const account = pca.getActiveAccount() ?? undefined;
@@ -192,6 +292,10 @@ async function main(): Promise<void> {
   els.loadTodos.addEventListener('click', () => {
     void loadTodos();
   });
+
+  // Best-effort reachability check: if the emulator can't be reached over HTTPS (typically an
+  // untrusted dev certificate), show the portal-trust banner up front instead of only on sign-in.
+  void probeEmulator();
 }
 
 void main();

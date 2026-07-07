@@ -70,6 +70,23 @@ button#signout {
   font-weight: 600;
 }
 
+.tls-help {
+  border-color: #e0a100;
+  background: #fff8e6;
+}
+
+.tls-help h2 {
+  margin-top: 0;
+  color: #8a6100;
+}
+
+.tls-help a {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-weight: 600;
+  color: #0a6cff;
+}
+
 pre {
   background: #0d1117;
   color: #e6edf3;
@@ -91,5 +108,12 @@ pre {
   .subtitle,
   .status {
     color: #9aa0aa;
+  }
+  .tls-help {
+    background: #2a2410;
+    border-color: #6b5300;
+  }
+  .tls-help h2 {
+    color: #f0c552;
   }
 }
