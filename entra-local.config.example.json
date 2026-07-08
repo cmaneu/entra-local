@@ -20,5 +20,6 @@
   },
   "deviceCodeInterval": 5,
   "graphResourceId": "https://graph.microsoft.com",
+  "groupOverageLimit": 200,
   "logLevel": "info"
 }
