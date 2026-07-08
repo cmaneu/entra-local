@@ -89,6 +89,7 @@ export const RawConfigSchema = z
     tokenLifetimeDeviceCode: zInt(1),
     deviceCodeInterval: zInt(1),
     graphResourceId: z.string().min(1),
+    groupOverageLimit: zInt(1),
     logLevel: z.enum(LOG_LEVELS),
     configFile: z.string().min(1),
     nodeEnv: z.enum(NODE_ENVS),
@@ -156,6 +157,8 @@ export interface Config {
   };
   readonly deviceCodeInterval: number;
   readonly graphResourceId: string;
+  /** Maximum number of `groups` emitted in a JWT before switching to the overage claim payload. */
+  readonly groupOverageLimit: number;
   readonly logLevel: LogLevel;
   readonly configFile: string;
   readonly nodeEnv: NodeEnv;
@@ -209,6 +212,7 @@ export function assembleConfig(raw: RawConfig): Config {
     }),
     deviceCodeInterval: raw.deviceCodeInterval,
     graphResourceId: raw.graphResourceId,
+    groupOverageLimit: raw.groupOverageLimit,
     logLevel: raw.logLevel,
     configFile: raw.configFile,
     nodeEnv: raw.nodeEnv,

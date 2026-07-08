@@ -75,7 +75,51 @@ export interface AppRegistration {
   displayName: string;
   isConfidential: boolean;
   appIdUri: string | null;
+  /** Optional-claims configuration (Entra app-manifest shape). Empty collections when unset. */
+  optionalClaims: OptionalClaimsConfig;
+  /** Group membership claim mode. `None` disables the `groups` claim. */
+  groupMembershipClaims: GroupMembershipClaims;
+  /** Per-app override of the global group overage limit; `null` uses the configured default. */
+  groupOverageLimit: number | null;
   createdAt: number;
+}
+
+/** A single optional claim entry (Entra `optionalClaims.{idToken,accessToken}[]` shape). */
+export interface OptionalClaim {
+  name: string;
+  essential?: boolean;
+  source?: string | null;
+  additionalProperties?: string[];
+}
+
+/** Optional-claims configuration for the supported token collections (SAML is out of scope). */
+export interface OptionalClaimsConfig {
+  idToken: OptionalClaim[];
+  accessToken: OptionalClaim[];
+}
+
+/** Supported group-membership claim modes (mirrors the Entra app manifest). */
+export type GroupMembershipClaims =
+  | 'None'
+  | 'SecurityGroup'
+  | 'DirectoryRole'
+  | 'ApplicationGroup'
+  | 'All';
+
+/** The set of valid `groupMembershipClaims` values (for validation + portal option lists). */
+export const GROUP_MEMBERSHIP_CLAIMS_VALUES: readonly GroupMembershipClaims[] = [
+  'None',
+  'SecurityGroup',
+  'DirectoryRole',
+  'ApplicationGroup',
+  'All',
+] as const;
+
+/** Token configuration patch shape shared by the model and the admin API. */
+export interface TokenConfigUpdate {
+  optionalClaims?: OptionalClaimsConfig;
+  groupMembershipClaims?: GroupMembershipClaims;
+  groupOverageLimit?: number | null;
 }
 
 export interface NewApp {
@@ -84,12 +128,18 @@ export interface NewApp {
   displayName: string;
   isConfidential?: boolean;
   appIdUri?: string | null;
+  optionalClaims?: OptionalClaimsConfig;
+  groupMembershipClaims?: GroupMembershipClaims;
+  groupOverageLimit?: number | null;
 }
 
 export interface AppUpdate {
   displayName?: string;
   isConfidential?: boolean;
   appIdUri?: string | null;
+  optionalClaims?: OptionalClaimsConfig;
+  groupMembershipClaims?: GroupMembershipClaims;
+  groupOverageLimit?: number | null;
 }
 
 export interface ScopeUpdate {

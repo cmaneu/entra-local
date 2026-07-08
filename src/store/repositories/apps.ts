@@ -8,17 +8,55 @@ import type {
   AppSecret,
   AppUpdate,
   CreatedSecret,
+  GroupMembershipClaims,
   NewApp,
   NewRole,
   NewScope,
   NewSecret,
+  OptionalClaimsConfig,
   RedirectUri,
   RoleUpdate,
   ScopeUpdate,
 } from '../types.js';
+import { GROUP_MEMBERSHIP_CLAIMS_VALUES } from '../types.js';
 import type { Clock, Row } from '../util.js';
 import { asBool, escapeLike, fromBool, optNum, optStr, reqNum, reqStr } from '../util.js';
 import type { ListOptions } from './users.js';
+
+/** An empty (no-claims) optional-claims configuration. */
+function emptyOptionalClaims(): OptionalClaimsConfig {
+  return { idToken: [], accessToken: [] };
+}
+
+/** Parse the stored `optional_claims` JSON blob into a normalized {@link OptionalClaimsConfig}. */
+function parseOptionalClaims(raw: string | null): OptionalClaimsConfig {
+  if (raw == null || raw.trim() === '') return emptyOptionalClaims();
+  try {
+    const parsed = JSON.parse(raw) as Partial<OptionalClaimsConfig>;
+    return {
+      idToken: Array.isArray(parsed.idToken) ? parsed.idToken : [],
+      accessToken: Array.isArray(parsed.accessToken) ? parsed.accessToken : [],
+    };
+  } catch {
+    return emptyOptionalClaims();
+  }
+}
+
+/** Serialize an optional-claims configuration for storage (`null` when there are no entries). */
+function serializeOptionalClaims(config: OptionalClaimsConfig | undefined): string | null {
+  if (!config) return null;
+  const idToken = config.idToken ?? [];
+  const accessToken = config.accessToken ?? [];
+  if (idToken.length === 0 && accessToken.length === 0) return null;
+  return JSON.stringify({ idToken, accessToken });
+}
+
+/** Coerce a stored/raw value into a valid {@link GroupMembershipClaims} (defaults to `None`). */
+function normalizeGroupClaims(raw: string | null): GroupMembershipClaims {
+  return (GROUP_MEMBERSHIP_CLAIMS_VALUES as readonly string[]).includes(raw ?? '')
+    ? (raw as GroupMembershipClaims)
+    : 'None';
+}
 
 function mapApp(row: Row): AppRegistration {
   return {
@@ -27,6 +65,9 @@ function mapApp(row: Row): AppRegistration {
     displayName: reqStr(row, 'display_name'),
     isConfidential: asBool(row, 'is_confidential'),
     appIdUri: optStr(row, 'app_id_uri'),
+    optionalClaims: parseOptionalClaims(optStr(row, 'optional_claims')),
+    groupMembershipClaims: normalizeGroupClaims(optStr(row, 'group_membership_claims')),
+    groupOverageLimit: optNum(row, 'group_overage_limit'),
     createdAt: reqNum(row, 'created_at'),
   };
 }
@@ -117,8 +158,9 @@ export function createAppsRepository(db: Database, clock: Clock): AppsRepository
   const countStmt = db.prepare('SELECT COUNT(*) AS n FROM app_registrations');
   const insertApp = db.prepare(
     `INSERT INTO app_registrations
-       (app_id, tenant_id, display_name, is_confidential, app_id_uri, created_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+       (app_id, tenant_id, display_name, is_confidential, app_id_uri,
+        optional_claims, group_membership_claims, group_overage_limit, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   );
   const deleteApp = db.prepare('DELETE FROM app_registrations WHERE app_id = ?');
 
@@ -209,6 +251,9 @@ export function createAppsRepository(db: Database, clock: Clock): AppsRepository
         input.displayName,
         fromBool(input.isConfidential ?? false),
         input.appIdUri ?? null,
+        serializeOptionalClaims(input.optionalClaims),
+        input.groupMembershipClaims ?? 'None',
+        input.groupOverageLimit ?? null,
         clock(),
       );
       return repo.getByAppId(appId) as AppRegistration;
@@ -229,6 +274,18 @@ export function createAppsRepository(db: Database, clock: Clock): AppsRepository
       if (patch.appIdUri !== undefined) {
         sets.push('app_id_uri = ?');
         values.push(patch.appIdUri);
+      }
+      if (patch.optionalClaims !== undefined) {
+        sets.push('optional_claims = ?');
+        values.push(serializeOptionalClaims(patch.optionalClaims));
+      }
+      if (patch.groupMembershipClaims !== undefined) {
+        sets.push('group_membership_claims = ?');
+        values.push(patch.groupMembershipClaims);
+      }
+      if (patch.groupOverageLimit !== undefined) {
+        sets.push('group_overage_limit = ?');
+        values.push(patch.groupOverageLimit);
       }
       if (sets.length > 0) {
         db.prepare(`UPDATE app_registrations SET ${sets.join(', ')} WHERE app_id = ?`).run(

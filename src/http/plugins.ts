@@ -56,8 +56,10 @@ export async function registerGraphRoutes(app: FastifyInstance): Promise<void> {
 
       // Minimal Microsoft Graph (#10): read-only `/me`, `/users`, `/groups`.
       graph.get('/v1.0/me', graphApi.me);
+      graph.get('/v1.0/me/memberOf', graphApi.meMemberOf);
       graph.get('/v1.0/users', graphApi.listUsers);
       graph.get('/v1.0/users/:id', graphApi.getUser);
+      graph.get('/v1.0/users/:id/memberOf', graphApi.getUserMemberOf);
       graph.get('/v1.0/groups', graphApi.listGroups);
       graph.get('/v1.0/groups/:id', graphApi.getGroup);
       graph.get('/v1.0/groups/:id/members', graphApi.listGroupMembers);

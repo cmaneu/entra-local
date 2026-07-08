@@ -25,6 +25,7 @@ export const DEFAULTS = {
   tokenLifetimeDeviceCode: 900,
   deviceCodeInterval: 5,
   graphResourceId: 'https://graph.microsoft.com',
+  groupOverageLimit: 200,
   logLevel: 'info',
   configFile: './entra-local.config.json',
   nodeEnv: 'development',

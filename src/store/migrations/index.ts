@@ -2,6 +2,7 @@ import type { Database } from '../db.js';
 import { transaction } from '../db.js';
 import type { Clock } from '../util.js';
 import { MIGRATION_001_INITIAL } from './migration-001-initial.js';
+import { MIGRATION_002_TOKEN_CONFIG } from './migration-002-token-config.js';
 
 /** A forward-only migration: a version number and the SQL that brings the schema to it. */
 export interface Migration {
@@ -13,6 +14,7 @@ export interface Migration {
 /** Ordered list of forward-only migrations. Append new entries; never edit or reorder existing. */
 export const MIGRATIONS: readonly Migration[] = [
   { version: 1, name: 'initial', sql: MIGRATION_001_INITIAL },
+  { version: 2, name: 'token-config', sql: MIGRATION_002_TOKEN_CONFIG },
 ];
 
 /** Ensure the migration-tracking table exists. */

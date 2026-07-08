@@ -117,6 +117,7 @@ async function handleAuthorizationCode(
     resource: redeem.resource,
     nonce: redeem.nonce,
     grant: 'authorization_code',
+    ipAddress: request.ip,
   });
 
   // Entra parity: the token-response `scope` envelope echoes the granted scopes as requested
@@ -218,6 +219,7 @@ async function handleRefreshToken(
     resource: redeem.resource,
     grant: 'refresh_token',
     refreshToken: includeRefresh ? redeem.newRefreshToken : null,
+    ipAddress: request.ip,
   });
 
   // Preserve the fully-qualified granted scopes in the response envelope (the MSAL access-token

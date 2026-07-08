@@ -251,6 +251,7 @@ export async function handleDeviceCodeGrant(
       resource,
       nonce: null,
       grant: 'device_code',
+      ipAddress: request.ip,
     });
 
     // Preserve the granted (possibly resource-qualified) scopes in the response envelope (#6 parity).
