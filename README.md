@@ -406,6 +406,10 @@ self-signed cert) lives under `data/` (gitignored).
   token design, data model, configuration, deployment, and acceptance criteria.
 - 🔌 **[MSAL client configuration](docs/msal-client-config.md)** — per-platform authority,
   `knownAuthorities`, instance-discovery, and cert-trust settings (including the local-domain origins).
+- 🔌 **[MSAL client configuration](docs/msal-client-config.md)** — per-platform authority,
+  `knownAuthorities`, instance-discovery, and cert-trust settings (including the local-domain origins).
+- 🎫 **[Token configuration](docs/token-configuration.md)** — optional claims & group claims:
+  ID-token vs access-token ownership, supported claims, group overage, and portal steps.
 - 🤝 **[Contributing](CONTRIBUTING.md)** — how to propose changes (open an issue first) and the
   project's governance.
 - 🧠 **[Decisions](memory/decisions.md)** / **[Conventions](memory/conventions.md)** —

@@ -199,6 +199,27 @@ The access token the SPA sends to the API (decoded and shown in the SPA's claims
 
 ---
 
+## Optional access-token claims & group claims
+
+This sample demonstrates **optional claims configured on the API/resource app registration**. The
+access token receives claims from the **resource** application's token configuration, **not** from
+the SPA/client app.
+
+A dedicated resource app, **`local-api`** (`cccccccc-0000-0000-0000-000000000007`), is seeded with
+optional **access-token** claims (`email`, `upn`, `groups`) and `SecurityGroup` group claims. To try
+it, point the SPA at the `local-api` scope (`api://cccccccc-0000-0000-0000-000000000007/access_as_user`)
+or configure claims on **this** sample's API app (`…0005`) from the portal's **Token configuration**
+card. Sign in as:
+
+- **`bob@entralocal.dev`** — 2 groups, so the access token carries an inline `groups` array.
+- **`alice@entralocal.dev`** — 4 groups (over the demo overage limit of `3`), so the token instead
+  carries an overage pointer and the API resolves membership via `GET /graph/v1.0/me/memberOf`.
+
+See **[../../docs/token-configuration.md](../../docs/token-configuration.md)** for the full reference
+and decoded token examples.
+
+---
+
 ## Configuration
 
 ### API env vars (`api/.env.example`)
