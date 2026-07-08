@@ -1,0 +1,43 @@
+# Build results
+bin/
+obj/
+out/
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio cache
+.vs/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Rider / ReSharper
+.idea/
+*.sln.iml
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+
+# Dependency directories
+node_modules/
+packages/
+
+# IDE specific files
+.DS_Store
+Thumbs.db
+
+# Local environment
+.env
+.env.local

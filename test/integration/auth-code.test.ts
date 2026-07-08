@@ -301,6 +301,53 @@ describe('account picker (criterion 2)', () => {
     expect(url.hash).toContain('state=frag');
     expect(url.search).toBe('');
   });
+
+  it('supports response_mode=form_post (code returned via auto-submitted form)', async () => {
+    ctx = await buildTestApp();
+    const params: Record<string, string> = {
+      client_id: SPA,
+      response_type: 'code',
+      redirect_uri: REDIRECT,
+      scope: `openid ${SPA_SCOPE}`,
+      response_mode: 'form_post',
+      state: 'formpost',
+      code_challenge: s256('verifier'),
+      code_challenge_method: 'S256',
+    };
+    const page = await ctx.inject({ method: 'GET', url: authorizeUrl(params) });
+    const signedState = extractSignedState(page.body);
+    const submit = await ctx.inject({
+      method: 'POST',
+      url: AUTHORIZE_PATH,
+      headers: FORM_HEADERS,
+      payload: form({ __el_state: signedState, __el_user: SEED.userAliceId }),
+    });
+    
+    // form_post returns 200 HTML, not 302 redirect
+    expect(submit.statusCode).toBe(200);
+    expect(submit.headers['content-type']).toContain('text/html');
+    
+    // Response should contain a form with POST method
+    const html = submit.body;
+    expect(html).toContain('<form');
+    expect(html).toContain('method="POST"');
+    expect(html).toContain(`action="${REDIRECT}"`);
+    
+    // Form should contain hidden inputs for code and state
+    expect(html).toContain('type="hidden"');
+    expect(html).toContain('name="code"');
+    expect(html).toContain('name="state"');
+    expect(html).toContain('formpost'); // state value
+    
+    // Extract code value from form
+    const codeMatch = html.match(/name="code"\s+value="([^"]+)"/);
+    expect(codeMatch).toBeTruthy();
+    const code = codeMatch?.[1];
+    expect(code).toMatch(/.+/);
+    
+    // Should contain auto-submit script
+    expect(html).toContain('submit');
+  });
 });
 
 // ---------------------------------------------------------------------------
