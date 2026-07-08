@@ -322,29 +322,29 @@ describe('account picker (criterion 2)', () => {
       headers: FORM_HEADERS,
       payload: form({ __el_state: signedState, __el_user: SEED.userAliceId }),
     });
-    
+
     // form_post returns 200 HTML, not 302 redirect
     expect(submit.statusCode).toBe(200);
     expect(submit.headers['content-type']).toContain('text/html');
-    
+
     // Response should contain a form with POST method
     const html = submit.body;
     expect(html).toContain('<form');
     expect(html).toContain('method="POST"');
     expect(html).toContain(`action="${REDIRECT}"`);
-    
+
     // Form should contain hidden inputs for code and state
     expect(html).toContain('type="hidden"');
     expect(html).toContain('name="code"');
     expect(html).toContain('name="state"');
     expect(html).toContain('formpost'); // state value
-    
+
     // Extract code value from form
     const codeMatch = html.match(/name="code"\s+value="([^"]+)"/);
     expect(codeMatch).toBeTruthy();
     const code = codeMatch?.[1];
     expect(code).toMatch(/.+/);
-    
+
     // Should contain auto-submit script
     expect(html).toContain('submit');
   });
