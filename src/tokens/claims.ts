@@ -32,6 +32,8 @@ export interface IdTokenClaims {
   ver: typeof TOKEN_VERSION;
   email?: string;
   nonce?: string;
+  /** Configurable optional/group claims (feature: token configuration) are merged in at issuance. */
+  [claim: string]: unknown;
 }
 
 /** Assembled access-token payload. Delegated vs app-only differences are captured by optionals. */
@@ -52,6 +54,8 @@ export interface AccessTokenClaims {
   scp?: string;
   /** App-only only: granted app role values. */
   roles?: string[];
+  /** Configurable optional/group claims (feature: token configuration) are merged in at issuance. */
+  [claim: string]: unknown;
 }
 
 /**

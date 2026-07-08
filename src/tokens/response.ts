@@ -12,6 +12,7 @@ import {
 import type { SigningService } from './keys.js';
 import { mintAccessToken, mintIdToken } from './mint.js';
 import type { RefreshTokenService } from './refresh.js';
+import { resolveAppTokenClaims } from './tokenConfig.js';
 
 /**
  * The OAuth `token_endpoint` success-response builder (spec #5), reused by #6 (auth code), #7
@@ -63,6 +64,10 @@ export interface BuildTokenResponseParams {
   roles?: readonly string[];
   /** Pre-issued refresh token to embed verbatim (e.g. the rotated token from #7). */
   refreshToken?: string | null;
+  /** Request IP address, sourced into the `ipaddr` optional claim when configured. */
+  ipAddress?: string;
+  /** Authentication/session time (epoch seconds), sourced into the `auth_time` optional claim. */
+  authTime?: number;
   /** Override the build clock (seconds) for deterministic responses; defaults to the service clock. */
   now?: number;
 }
@@ -80,6 +85,8 @@ export interface TokenResponseBuilderDeps {
   issuer: string;
   tenantId: string;
   clock: () => number;
+  /** Optional warning sink for unsupported configured optional claims (defaults to no-op). */
+  warn?: (message: string) => void;
 }
 
 export interface TokenResponseBuilder {
@@ -91,6 +98,16 @@ export function createTokenResponseBuilder(deps: TokenResponseBuilderDeps): Toke
   const { store, signing, refresh, config, issuer, tenantId, clock } = deps;
   const accessLifetime = config.tokenLifetimes.accessToken;
   const idLifetime = config.tokenLifetimes.idToken;
+  const warn = deps.warn ?? (() => {});
+
+  /** Log a warning for each configured optional claim Entra Local does not support. */
+  const warnUnsupported = (appId: string, kind: string, names: string[]): void => {
+    for (const name of names) {
+      warn(
+        `Ignoring unsupported ${kind} optional claim '${name}' configured on app '${appId}'.`,
+      );
+    }
+  };
 
   return {
     async buildTokenResponse(params) {
@@ -100,30 +117,51 @@ export function createTokenResponseBuilder(deps: TokenResponseBuilderDeps): Toke
       const audience = params.audience ?? resolveAudience(params.resource, config, store);
       const names = scopeNames(params.scopes);
 
-      const accessToken = await mintAccessToken(
-        signing,
-        tenantId,
-        delegated
-          ? buildDelegatedAccessClaims({
-              user,
-              app: params.app,
-              tenantId,
-              issuer,
-              audience,
-              scopes: params.scopes,
-              now,
-              lifetimeSeconds: accessLifetime,
-            })
-          : buildAppOnlyAccessClaims({
-              app: params.app,
-              tenantId,
-              issuer,
-              audience,
-              roles: params.roles ?? [],
-              now,
-              lifetimeSeconds: accessLifetime,
-            }),
-      );
+      // Access-token optional/group claims come from the *resource/API* app registration (the app
+      // whose appId equals the resolved audience), never the client — unless the client is the
+      // audience. When the audience is Graph or an unregistered resource there is no config to apply.
+      const accessClaims: Record<string, unknown> = {};
+      if (delegated) {
+        const resourceApp = store.apps.getByAppId(audience);
+        if (resourceApp) {
+          const resolved = resolveAppTokenClaims({
+            app: resourceApp,
+            kind: 'accessToken',
+            user,
+            store,
+            config,
+            now,
+            authTime: params.authTime,
+            ipAddress: params.ipAddress,
+          });
+          Object.assign(accessClaims, resolved.claims);
+          warnUnsupported(resourceApp.appId, 'access-token', resolved.unsupportedClaims);
+        }
+      }
+
+      const accessPayload = delegated
+        ? buildDelegatedAccessClaims({
+            user,
+            app: params.app,
+            tenantId,
+            issuer,
+            audience,
+            scopes: params.scopes,
+            now,
+            lifetimeSeconds: accessLifetime,
+          })
+        : buildAppOnlyAccessClaims({
+            app: params.app,
+            tenantId,
+            issuer,
+            audience,
+            roles: params.roles ?? [],
+            now,
+            lifetimeSeconds: accessLifetime,
+          });
+      Object.assign(accessPayload, accessClaims);
+
+      const accessToken = await mintAccessToken(signing, tenantId, accessPayload);
 
       const response: TokenResponse = {
         token_type: 'Bearer',
@@ -134,20 +172,30 @@ export function createTokenResponseBuilder(deps: TokenResponseBuilderDeps): Toke
       };
 
       if (delegated && names.includes('openid')) {
-        response.id_token = await mintIdToken(
-          signing,
+        // ID-token optional/group claims come from the *client* app registration.
+        const idResolved = resolveAppTokenClaims({
+          app: params.app,
+          kind: 'idToken',
+          user,
+          store,
+          config,
+          now,
+          authTime: params.authTime,
+          ipAddress: params.ipAddress,
+        });
+        warnUnsupported(params.app.appId, 'id-token', idResolved.unsupportedClaims);
+        const idPayload = buildIdTokenClaims({
+          user,
+          app: params.app,
           tenantId,
-          buildIdTokenClaims({
-            user,
-            app: params.app,
-            tenantId,
-            issuer,
-            scopes: params.scopes,
-            nonce: params.nonce,
-            now,
-            lifetimeSeconds: idLifetime,
-          }),
-        );
+          issuer,
+          scopes: params.scopes,
+          nonce: params.nonce,
+          now,
+          lifetimeSeconds: idLifetime,
+        });
+        Object.assign(idPayload, idResolved.claims);
+        response.id_token = await mintIdToken(signing, tenantId, idPayload);
       }
 
       if (params.refreshToken) {

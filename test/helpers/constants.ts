@@ -42,6 +42,7 @@ export function makeTestConfig(dbPath: string): Config {
     }),
     deviceCodeInterval: 5,
     graphResourceId: 'https://graph.microsoft.com',
+    groupOverageLimit: 200,
     logLevel: 'silent',
     configFile: './entra-local.config.json',
     nodeEnv: 'test',

@@ -50,7 +50,7 @@ describe('store plugin: migrations (criterion 1)', () => {
           version: number;
         }[]
       ).map((r) => r.version);
-      expect(versions).toEqual([1]);
+      expect(versions).toEqual([1, 2]);
     } finally {
       await ctx.close();
     }
@@ -61,7 +61,7 @@ describe('store plugin: migrations (criterion 1)', () => {
     const dbPath = join(TMP_DIR, `${randomUUID()}.db`);
     try {
       const db1 = openDatabase(dbPath);
-      expect(runMigrations(db1, () => 1)).toEqual([1]);
+      expect(runMigrations(db1, () => 1)).toEqual([1, 2]);
       db1.close();
 
       const db2 = openDatabase(dbPath);
@@ -98,11 +98,11 @@ describe('store plugin: seed determinism (criterion 3)', () => {
       const db = ctx.app.store.db;
       expect(count(db, 'tenants')).toBe(1);
       expect(count(db, 'users')).toBe(2);
-      expect(count(db, 'groups')).toBe(1);
-      expect(count(db, 'group_members')).toBe(2);
-      expect(count(db, 'app_registrations')).toBe(4);
-      expect(count(db, 'app_redirect_uris')).toBe(2);
-      expect(count(db, 'app_scopes')).toBe(3);
+      expect(count(db, 'groups')).toBe(4);
+      expect(count(db, 'group_members')).toBe(6);
+      expect(count(db, 'app_registrations')).toBe(6);
+      expect(count(db, 'app_redirect_uris')).toBe(3);
+      expect(count(db, 'app_scopes')).toBe(4);
       expect(count(db, 'app_secrets')).toBe(1);
       expect(count(db, 'app_roles')).toBe(1);
       expect(count(db, 'signing_keys')).toBe(1); // #3 bootstrap seeds/generates the active key

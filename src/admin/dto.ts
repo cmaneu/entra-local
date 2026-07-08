@@ -5,6 +5,8 @@ import type {
   AppSecret,
   CreatedSecret,
   Group,
+  GroupMembershipClaims,
+  OptionalClaimsConfig,
   RedirectUri,
   User,
 } from '../store/types.js';
@@ -146,6 +148,9 @@ export interface AppDto {
   exposedScopes: ScopeDto[];
   appRoles: RoleDto[];
   secrets: SecretDto[];
+  optionalClaims: OptionalClaimsConfig;
+  groupMembershipClaims: GroupMembershipClaims;
+  groupOverageLimit: number | null;
   createdAt: string;
 }
 
@@ -166,6 +171,9 @@ export function toAppDto(app: AppRegistration, sub: AppSubCollections): AppDto {
     exposedScopes: sub.scopes.map(toScopeDto),
     appRoles: sub.roles.map(toRoleDto),
     secrets: sub.secrets.map(toSecretDto),
+    optionalClaims: app.optionalClaims,
+    groupMembershipClaims: app.groupMembershipClaims,
+    groupOverageLimit: app.groupOverageLimit,
     createdAt: isoFromEpoch(app.createdAt) as string,
   };
 }

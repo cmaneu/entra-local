@@ -54,6 +54,7 @@ function readEnv(env: NodeJS.ProcessEnv): FlatRaw {
     tokenLifetimeDeviceCode: env.TOKEN_LIFETIME_DEVICE_CODE_SECONDS,
     deviceCodeInterval: env.DEVICE_CODE_INTERVAL_SECONDS,
     graphResourceId: env.GRAPH_RESOURCE_ID,
+    groupOverageLimit: env.GROUP_OVERAGE_LIMIT,
     logLevel: env.LOG_LEVEL,
     nodeEnv: env.NODE_ENV,
   });
@@ -97,6 +98,7 @@ const ConfigFileSchema = z
       .optional(),
     deviceCodeInterval: z.unknown(),
     graphResourceId: z.unknown(),
+    groupOverageLimit: z.unknown(),
     logLevel: z.unknown(),
   })
   .partial();
@@ -144,6 +146,7 @@ function readConfigFile(env: NodeJS.ProcessEnv): FlatRaw {
     tokenLifetimeDeviceCode: lifetimes.deviceCode,
     deviceCodeInterval: file.deviceCodeInterval,
     graphResourceId: file.graphResourceId,
+    groupOverageLimit: file.groupOverageLimit,
     logLevel: file.logLevel,
   });
 }
@@ -175,6 +178,7 @@ const FLAT_TO_ENV: Record<string, string> = {
   tokenLifetimeDeviceCode: 'TOKEN_LIFETIME_DEVICE_CODE_SECONDS',
   deviceCodeInterval: 'DEVICE_CODE_INTERVAL_SECONDS',
   graphResourceId: 'GRAPH_RESOURCE_ID',
+  groupOverageLimit: 'GROUP_OVERAGE_LIMIT',
   logLevel: 'LOG_LEVEL',
   configFile: 'CONFIG_FILE',
   nodeEnv: 'NODE_ENV',
