@@ -103,9 +103,7 @@ export function createTokenResponseBuilder(deps: TokenResponseBuilderDeps): Toke
   /** Log a warning for each configured optional claim Entra Local does not support. */
   const warnUnsupported = (appId: string, kind: string, names: string[]): void => {
     for (const name of names) {
-      warn(
-        `Ignoring unsupported ${kind} optional claim '${name}' configured on app '${appId}'.`,
-      );
+      warn(`Ignoring unsupported ${kind} optional claim '${name}' configured on app '${appId}'.`);
     }
   };
 

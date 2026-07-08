@@ -407,6 +407,35 @@ describe('Graph groups + members (criterion 8)', () => {
   });
 });
 
+describe('Graph memberOf (group overage resolution)', () => {
+  it('Graph_MeMemberOf_ReturnsSignedInUserGroups and /users/{id}/memberOf resolves memberships', async () => {
+    ctx = await buildTestApp();
+    const token = await delegatedToken(ctx);
+
+    const me = await graphGet(ctx, '/graph/v1.0/me/memberOf', token);
+    expect(me.statusCode).toBe(200);
+    const meBody = me.json() as {
+      '@odata.context': string;
+      value: { id: string; displayName: string }[];
+    };
+    // Alice is the seeded signed-in user; she belongs to Engineering + 3 token-config groups.
+    const meIds = meBody.value.map((g) => g.id);
+    expect(meIds).toEqual(
+      expect.arrayContaining([
+        SEED.groupEngineeringId,
+        SEED.groupDevelopersId,
+        SEED.groupDataTeamId,
+        SEED.groupLocalAdminsId,
+      ]),
+    );
+
+    const byId = await graphGet(ctx, `/graph/v1.0/users/${SEED.userBobId}/memberOf`, token);
+    expect(byId.statusCode).toBe(200);
+    const bobIds = (byId.json() as { value: { id: string }[] }).value.map((g) => g.id).sort();
+    expect(bobIds).toEqual([SEED.groupEngineeringId, SEED.groupDevelopersId].sort());
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Criterion 9 — missing token → 401 with WWW-Authenticate + Graph error body
 // ---------------------------------------------------------------------------
