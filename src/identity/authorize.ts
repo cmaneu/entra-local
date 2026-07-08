@@ -149,7 +149,11 @@ function validateAuthorize(source: ParamSource, store: Store, config: Config): V
 
   // redirect_uri is now trusted — remaining errors redirect back to it.
   const responseModeRaw = getParam(source, 'response_mode') ?? 'query';
-  if (responseModeRaw !== 'query' && responseModeRaw !== 'fragment' && responseModeRaw !== 'form_post') {
+  if (
+    responseModeRaw !== 'query' &&
+    responseModeRaw !== 'fragment' &&
+    responseModeRaw !== 'form_post'
+  ) {
     return {
       kind: 'redirectError',
       redirectUri,
@@ -243,7 +247,10 @@ function buildFormPostResponse(
 ): string {
   const formInputs = Object.entries(params)
     .filter(([, v]) => v !== undefined)
-    .map(([k, v]) => `    <input type="hidden" name="${escapeHtml(k)}" value="${escapeHtml(v as string)}">`)
+    .map(
+      ([k, v]) =>
+        `    <input type="hidden" name="${escapeHtml(k)}" value="${escapeHtml(v as string)}">`,
+    )
     .join('\n');
 
   return `<!DOCTYPE html>
@@ -343,7 +350,7 @@ function issueCodeAndRedirect(
     nonce: v.nonce ?? null,
   });
   const params = { code, ...(v.state !== undefined ? { state: v.state } : {}) };
-  
+
   if (v.responseMode === 'form_post') {
     const html = buildFormPostResponse(v.redirectUri, params);
     sendHtml(reply, 200, html);
@@ -359,7 +366,8 @@ function redirectError(
   o: ValidationOutcome & { kind: 'redirectError' },
 ): void {
   // Error responses always use query/fragment (RFC 8693 form_post is for successful responses only)
-  const errorResponseMode: 'query' | 'fragment' = o.responseMode === 'form_post' ? 'query' : o.responseMode;
+  const errorResponseMode: 'query' | 'fragment' =
+    o.responseMode === 'form_post' ? 'query' : o.responseMode;
   const url = buildRedirect(
     o.redirectUri,
     {
