@@ -24,10 +24,7 @@ import {
   tokenPreviewSchema,
 } from './schemas.js';
 import { GROUP_MEMBERSHIP_CLAIMS_VALUES } from '../store/types.js';
-import {
-  SUPPORTED_ACCESS_TOKEN_CLAIMS,
-  SUPPORTED_ID_TOKEN_CLAIMS,
-} from '../tokens/tokenConfig.js';
+import { SUPPORTED_ACCESS_TOKEN_CLAIMS, SUPPORTED_ID_TOKEN_CLAIMS } from '../tokens/tokenConfig.js';
 
 interface IdParams {
   id: string;

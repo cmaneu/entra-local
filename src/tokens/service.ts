@@ -11,11 +11,7 @@ import {
   type RedeemAuthCodeResult,
 } from './authCode.js';
 import type { AccessTokenClaims, IdTokenClaims } from './claims.js';
-import {
-  buildDelegatedAccessClaims,
-  buildIdTokenClaims,
-  pairwiseSub,
-} from './claims.js';
+import { buildDelegatedAccessClaims, buildIdTokenClaims, pairwiseSub } from './claims.js';
 import type { SigningService } from './keys.js';
 import { mintAccessToken, mintIdToken } from './mint.js';
 import type { AppRegistration, User } from '../store/types.js';
@@ -141,27 +137,31 @@ export function createTokenService(deps: CreateTokenServiceDeps): TokenService {
       const resolved = resolveAppTokenClaims({ app, kind: tokenType, user, store, config, now });
       const base: Record<string, unknown> =
         tokenType === 'idToken'
-          ? { ...buildIdTokenClaims({
-              user,
-              app,
-              tenantId,
-              issuer,
-              // Representative scopes so base OIDC claims (e.g. email) reflect a real sign-in.
-              scopes: ['openid', 'profile', 'email'],
-              now,
-              lifetimeSeconds: config.tokenLifetimes.idToken,
-            }) }
-          : { ...buildDelegatedAccessClaims({
-              user,
-              app,
-              tenantId,
-              issuer,
-              // The viewed app acts as the resource/API app (the access-token audience).
-              audience: app.appIdUri ?? app.appId,
-              scopes: [],
-              now,
-              lifetimeSeconds: config.tokenLifetimes.accessToken,
-            }) };
+          ? {
+              ...buildIdTokenClaims({
+                user,
+                app,
+                tenantId,
+                issuer,
+                // Representative scopes so base OIDC claims (e.g. email) reflect a real sign-in.
+                scopes: ['openid', 'profile', 'email'],
+                now,
+                lifetimeSeconds: config.tokenLifetimes.idToken,
+              }),
+            }
+          : {
+              ...buildDelegatedAccessClaims({
+                user,
+                app,
+                tenantId,
+                issuer,
+                // The viewed app acts as the resource/API app (the access-token audience).
+                audience: app.appIdUri ?? app.appId,
+                scopes: [],
+                now,
+                lifetimeSeconds: config.tokenLifetimes.accessToken,
+              }),
+            };
       return {
         claims: { ...base, ...resolved.claims },
         unsupportedClaims: resolved.unsupportedClaims,
