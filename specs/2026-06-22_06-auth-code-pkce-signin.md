@@ -51,11 +51,16 @@ A working Authorization Code + PKCE flow: `/{tenant}/oauth2/v2.0/authorize` rend
 | `code_challenge` | required for public clients | PKCE challenge. |
 | `code_challenge_method` | with challenge | `S256` (preferred) or `plain`. |
 | `nonce` | recommended | Echoed into ID token. |
-| `response_mode` | no | `query` (default) or `fragment`. |
+| `response_mode` | no | `query` (default), `fragment`, or `form_post`. See notes below. |
 | `prompt` | no | `login`/`select_account`/`none` honored minimally (see flow). |
 | `login_hint` | no | Pre-selects a user in the picker. |
 
-**Success:** `302` redirect to `redirect_uri` with `code` (+ `state`) appended per `response_mode`.
+**Response mode details:**
+- `query` (default): `302` redirect to `redirect_uri?code=...&state=...` (parameters in query string).
+- `fragment`: `302` redirect to `redirect_uri#code=...&state=...` (parameters in URL fragment, hidden from server logs).
+- `form_post` (RFC 8693): `200` HTML page with a hidden form that auto-submits POST to `redirect_uri`, with `code` and `state` as hidden form fields. More secure for server-side applications (hides auth params from browser history and proxy logs).
+
+**Success:** Per `response_mode`, either a `302` redirect (query/fragment) or a `200` HTML form (form_post).
 
 **Error handling (authorize):**
 - If `redirect_uri`/`client_id` are **invalid/unregistered** → do **not** redirect; render an error page (`400`) — never redirect to an unvalidated URI (security).

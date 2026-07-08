@@ -55,7 +55,7 @@ A standards-correct, MSAL-tuned OIDC discovery document at `/{tenant}/v2.0/.well
   "userinfo_endpoint": "https://localhost:8443/graph/oidc/userinfo",
   "end_session_endpoint": "https://localhost:8443/11111111-1111-1111-1111-111111111111/oauth2/v2.0/logout",
   "response_types_supported": ["code"],
-  "response_modes_supported": ["query", "fragment"],
+  "response_modes_supported": ["query", "fragment", "form_post"],
   "grant_types_supported": ["authorization_code", "refresh_token", "client_credentials"],
   "subject_types_supported": ["pairwise"],
   "scopes_supported": ["openid", "profile", "email", "offline_access"],
@@ -75,7 +75,7 @@ A standards-correct, MSAL-tuned OIDC discovery document at `/{tenant}/v2.0/.well
 - `grant_types_supported` lists only flows implemented in Iteration 1; **`urn:ietf:params:oauth:grant-type:device_code` is added by #15** (lockstep).
 - `device_authorization_endpoint` is **omitted** in Iteration 1; added by #15.
 - `http_logout_supported`/`frontchannel_logout_supported` may be added by #9 if its logout implementation warrants; #4 reserves the slot but #9 owns the value.
-- `response_modes_supported` is `["query","fragment"]` in Iteration 1 — exactly the modes #6 implements. `form_post` is added **only if/when** #6 implements it (lockstep). Do not advertise `form_post` in Iteration 1.
+- `response_modes_supported` is `["query","fragment","form_post"]` — all three modes implemented by #6. `form_post` (RFC 8693) returns an HTML form that auto-submits via POST, hiding authorization parameters from browser history and logs (more secure for server-side applications).
 
 ### Config consumed
 `PUBLIC_ORIGIN`, `ISSUER`, `TENANT_ID` ([#1](2026-06-22_01-server-config-tls-foundation.md)). The endpoint URLs are derived from `PUBLIC_ORIGIN` + the canonical path map; `issuer` from `ISSUER` (default derived).
@@ -112,7 +112,7 @@ None.
 2. **Issuer = token iss (token-conformance):** the discovery `issuer` exactly equals the `iss` claim minted by [#5](2026-06-22_05-token-service.md).
 3. **Alias issuer (integration):** requesting via `common`/`organizations`/`consumers`/GUID all return the **same** GUID-form `issuer` and identical endpoint URLs.
 4. **Invalid tenant (integration):** an unknown `{tenant}` segment → `404` JSON (not SPA HTML).
-5. **Lockstep (integration):** `grant_types_supported` excludes the device-code grant and `device_authorization_endpoint` is absent in Iteration 1; every advertised endpoint URL resolves to a registered route (a `501` stub or real handler per #1's Reserved-stub rule — never a bare `404`/SPA); `response_modes_supported` is exactly `["query","fragment"]`.
+5. **Lockstep (integration):** `grant_types_supported` excludes the device-code grant and `device_authorization_endpoint` is absent in Iteration 1; every advertised endpoint URL resolves to a registered route (a `501` stub or real handler per #1's Reserved-stub rule — never a bare `404`/SPA); `response_modes_supported` is exactly `["query","fragment","form_post"]`.
 6. **JWKS link (integration):** `jwks_uri` equals the live JWKS path from [#3](2026-06-22_03-signing-keys-jwks.md) and fetching it returns a JWK Set.
 7. **MSAL auto-config (e2e):** an `@azure/msal-node`/`@azure/msal-browser` client configured with `authority=<origin>/{tenant}` + `knownAuthorities` successfully fetches and parses this document (asserted as part of #6's e2e once authorize/token exist; #4 alone asserts the fetch+parse succeeds).
 8. **Cache headers (integration):** response sets `Cache-Control: public, max-age=3600`.

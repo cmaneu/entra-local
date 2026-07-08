@@ -91,7 +91,7 @@ function getParam(source: ParamSource, key: string): string | undefined {
 interface ValidatedAuthorize {
   app: AppRegistration;
   redirectUri: string;
-  responseMode: 'query' | 'fragment';
+  responseMode: 'query' | 'fragment' | 'form_post';
   scope: string;
   scopes: string[];
   resource: string | null;
@@ -108,7 +108,7 @@ type ValidationOutcome =
   | {
       kind: 'redirectError';
       redirectUri: string;
-      responseMode: 'query' | 'fragment';
+      responseMode: 'query' | 'fragment' | 'form_post';
       error: string;
       description: string;
       state?: string;
@@ -149,7 +149,11 @@ function validateAuthorize(source: ParamSource, store: Store, config: Config): V
 
   // redirect_uri is now trusted — remaining errors redirect back to it.
   const responseModeRaw = getParam(source, 'response_mode') ?? 'query';
-  if (responseModeRaw !== 'query' && responseModeRaw !== 'fragment') {
+  if (
+    responseModeRaw !== 'query' &&
+    responseModeRaw !== 'fragment' &&
+    responseModeRaw !== 'form_post'
+  ) {
     return {
       kind: 'redirectError',
       redirectUri,
@@ -159,7 +163,7 @@ function validateAuthorize(source: ParamSource, store: Store, config: Config): V
       state: getParam(source, 'state'),
     };
   }
-  const responseMode = responseModeRaw;
+  const responseMode = responseModeRaw as 'query' | 'fragment' | 'form_post';
   const state = getParam(source, 'state');
 
   const redirErr = (error: string, description: string): ValidationOutcome => ({
@@ -235,6 +239,48 @@ function buildRedirect(
   return url.toString();
 }
 
+/** Build a form_post response HTML document with auto-submitting form (OAuth 2.0 Form Post Response Mode RFC 8693). */
+function buildFormPostResponse(
+  redirectUri: string,
+  params: Record<string, string | undefined>,
+  method: string = 'POST',
+): string {
+  const formInputs = Object.entries(params)
+    .filter(([, v]) => v !== undefined)
+    .map(
+      ([k, v]) =>
+        `    <input type="hidden" name="${escapeHtml(k)}" value="${escapeHtml(v as string)}">`,
+    )
+    .join('\n');
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Redirecting...</title>
+</head>
+<body onload="document.forms[0].submit();">
+  <form method="${escapeHtml(method)}" action="${escapeHtml(redirectUri)}">
+${formInputs}
+    <noscript>
+      <p>JavaScript is disabled. Please click the button below to continue:</p>
+      <button type="submit">Continue</button>
+    </noscript>
+  </form>
+</body>
+</html>`;
+}
+
+/** Escape HTML special characters to prevent injection. */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 /** Send an HTML response with no-store caching. */
 function sendHtml(reply: FastifyReply, status: number, html: string): void {
   void reply
@@ -303,12 +349,15 @@ function issueCodeAndRedirect(
     codeChallengeMethod: v.codeChallengeMethod ?? null,
     nonce: v.nonce ?? null,
   });
-  const url = buildRedirect(
-    v.redirectUri,
-    { code, ...(v.state !== undefined ? { state: v.state } : {}) },
-    v.responseMode,
-  );
-  void reply.header('cache-control', 'no-store').redirect(url, 302);
+  const params = { code, ...(v.state !== undefined ? { state: v.state } : {}) };
+
+  if (v.responseMode === 'form_post') {
+    const html = buildFormPostResponse(v.redirectUri, params);
+    sendHtml(reply, 200, html);
+  } else {
+    const url = buildRedirect(v.redirectUri, params, v.responseMode);
+    void reply.header('cache-control', 'no-store').redirect(url, 302);
+  }
 }
 
 /** Send an authorize error redirect (RFC 6749 §4.1.2.1) back to the validated redirect_uri. */
@@ -316,6 +365,9 @@ function redirectError(
   reply: FastifyReply,
   o: ValidationOutcome & { kind: 'redirectError' },
 ): void {
+  // Error responses always use query/fragment (RFC 8693 form_post is for successful responses only)
+  const errorResponseMode: 'query' | 'fragment' =
+    o.responseMode === 'form_post' ? 'query' : o.responseMode;
   const url = buildRedirect(
     o.redirectUri,
     {
@@ -323,7 +375,7 @@ function redirectError(
       error_description: o.description,
       ...(o.state !== undefined ? { state: o.state } : {}),
     },
-    o.responseMode,
+    errorResponseMode,
   );
   void reply.header('cache-control', 'no-store').redirect(url, 302);
 }

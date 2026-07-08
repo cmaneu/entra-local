@@ -33,9 +33,10 @@ Seeded users (dev-only credentials): `alice@entralocal.dev` / `bob@entralocal.de
 | Sample                                                   | Stack                                  | What it demonstrates                                                                 |
 | -------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------- |
 | [`node-cli/`](./node-cli/README.md)                      | `@azure/msal-node` console app          | The **Device Authorization Grant** (RFC 8628) for a browserless CLI: a public client (app `…0001`) prints a code, you approve in a browser, and it calls Microsoft Graph `/me`. |
+| [`dotnet-console/`](./dotnet-console/README.md)         | MSAL.NET console app                   | The **Authorization Code + PKCE** flow with system browser sign-in and **form_post response mode** (RFC 8693): a public client (app `…0001`) signs in, acquires a Graph-audience access token, and calls Microsoft Graph `/me`. |
 | [`fullstack-spa-api/`](./fullstack-spa-api/README.md)    | `@azure/msal-browser` SPA + Express API | A SPA (app `…0004`) acquiring a delegated token **for a separate API app** (`…0005`) and the API validating it — the canonical "SPA → protected API" flow, one app registration per tier. |
 
-> More samples (vanilla/React SPA, Node web/daemon, .NET console, Python console) are specified
+> More samples (vanilla/React SPA, Node web/daemon, Python console) are specified
 > under [`../specs/`](../specs/) and will land alongside these.
 
 ## Token configuration (optional claims & group claims)

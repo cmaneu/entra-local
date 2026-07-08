@@ -63,7 +63,7 @@ export function buildDiscoveryMetadata(config: Config): DiscoveryMetadata {
     userinfo_endpoint: graphUserInfoUrl(config),
     end_session_endpoint: tenantUrl(config, TENANT_ENDPOINTS.logout),
     response_types_supported: ['code'],
-    response_modes_supported: ['query', 'fragment'],
+    response_modes_supported: ['query', 'fragment', 'form_post'],
     grant_types_supported: [
       'authorization_code',
       'refresh_token',

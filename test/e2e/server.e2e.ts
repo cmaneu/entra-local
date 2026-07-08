@@ -121,7 +121,7 @@ describe('e2e: server boots over HTTPS and MSAL can target the authority (criter
     );
     expect(body.token_endpoint as string).toMatch(new RegExp(`/${tenant}/oauth2/v2\\.0/token$`));
     expect(body.jwks_uri as string).toMatch(new RegExp(`/${tenant}/discovery/v2\\.0/keys$`));
-    expect(body.response_modes_supported).toEqual(['query', 'fragment']);
+    expect(body.response_modes_supported).toEqual(['query', 'fragment', 'form_post']);
 
     // The live JWKS endpoint (at the actual bound origin) returns a JWK Set over the same TLS
     // channel — proving the advertised jwks_uri path resolves to a real key set.
