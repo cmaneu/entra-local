@@ -387,3 +387,84 @@ describe('Admin API — error envelope + health (criterion 10)', () => {
     expect(health.json()).toMatchObject({ status: 'ok', tenantId: TEST_TENANT_ID });
   });
 });
+
+describe('Admin API — token configuration', () => {
+  it('exposes supported optional claims and group-membership modes', async () => {
+    ctx = await buildTestApp();
+    const res = await ctx.inject({
+      method: 'GET',
+      url: '/admin/api/token-configuration/supported-claims',
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      idToken: string[];
+      accessToken: string[];
+      groupMembershipClaims: string[];
+      defaultGroupOverageLimit: number;
+    };
+    expect(body.idToken).toEqual(expect.arrayContaining(['email', 'upn', 'groups', 'auth_time']));
+    expect(body.accessToken).toEqual(expect.arrayContaining(['email', 'upn', 'groups']));
+    expect(body.accessToken).not.toContain('auth_time');
+    expect(body.groupMembershipClaims).toEqual(
+      expect.arrayContaining(['None', 'SecurityGroup', 'All']),
+    );
+    expect(body.defaultGroupOverageLimit).toBeGreaterThan(0);
+  });
+
+  it('patches optional/group claim configuration and preserves unsupported claims', async () => {
+    ctx = await buildTestApp();
+    const patch = await ctx.inject({
+      method: 'PATCH',
+      url: `/admin/api/apps/${SEED.appSpaId}`,
+      headers: JSON_HEADERS,
+      payload: {
+        optionalClaims: {
+          idToken: [
+            { name: 'email', essential: false },
+            { name: 'acct', essential: false },
+          ],
+          accessToken: [],
+        },
+        groupMembershipClaims: 'SecurityGroup',
+        groupOverageLimit: 5,
+      },
+    });
+    expect(patch.statusCode).toBe(200);
+    const dto = patch.json() as {
+      optionalClaims: { idToken: { name: string }[] };
+      groupMembershipClaims: string;
+      groupOverageLimit: number;
+    };
+    expect(dto.optionalClaims.idToken.map((c) => c.name)).toEqual(['email', 'acct']);
+    expect(dto.groupMembershipClaims).toBe('SecurityGroup');
+    expect(dto.groupOverageLimit).toBe(5);
+  });
+
+  it('previews the decoded token for a selected user and token type', async () => {
+    ctx = await buildTestApp();
+    const res = await ctx.inject({
+      method: 'POST',
+      url: `/admin/api/apps/${SEED.appWebClientId}/token-preview`,
+      headers: JSON_HEADERS,
+      payload: { userId: SEED.userBobId, tokenType: 'idToken' },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      tokenType: string;
+      claims: Record<string, unknown>;
+      groupOverage: boolean;
+    };
+    expect(body.tokenType).toBe('idToken');
+    expect(body.claims.email).toBe('bob@entralocal.dev');
+    expect(Array.isArray(body.claims.groups)).toBe(true);
+    expect(body.groupOverage).toBe(false);
+
+    const overage = await ctx.inject({
+      method: 'POST',
+      url: `/admin/api/apps/${SEED.appWebClientId}/token-preview`,
+      headers: JSON_HEADERS,
+      payload: { userId: SEED.userAliceId, tokenType: 'idToken' },
+    });
+    expect((overage.json() as { groupOverage: boolean }).groupOverage).toBe(true);
+  });
+});

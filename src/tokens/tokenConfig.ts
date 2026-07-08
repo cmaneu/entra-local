@@ -1,12 +1,7 @@
 import type { Config } from '../config/schema.js';
 import { graphPublicUrl } from '../http/pathmap.js';
 import type { Store } from '../store/store.js';
-import type {
-  AppRegistration,
-  OptionalClaim,
-  OptionalClaimsConfig,
-  User,
-} from '../store/types.js';
+import type { AppRegistration, OptionalClaim, OptionalClaimsConfig, User } from '../store/types.js';
 
 /**
  * Resolution of configurable optional claims and group (membership) claims for locally issued
