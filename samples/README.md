@@ -38,6 +38,25 @@ Seeded users (dev-only credentials): `alice@entralocal.dev` / `bob@entralocal.de
 > More samples (vanilla/React SPA, Node web/daemon, .NET console, Python console) are specified
 > under [`../specs/`](../specs/) and will land alongside these.
 
+## Token configuration (optional claims & group claims)
+
+Both samples surface **optional claims** and **group claims**. See
+[`../docs/token-configuration.md`](../docs/token-configuration.md) for the full reference (supported
+claims, ID-token vs access-token ownership, group overage, decoded token examples, and portal
+steps).
+
+Two dedicated demo app registrations are seeded for this:
+
+| App                | `appId`                                | Demonstrates |
+| ------------------ | -------------------------------------- | ------------ |
+| `local-web-client` | `cccccccc-0000-0000-0000-000000000006` | **Optional ID-token claims** (`email`, `upn`, `given_name`, `family_name`, `groups`) + security-group claims, configured on the **client** app. |
+| `local-api`        | `cccccccc-0000-0000-0000-000000000007` | **Optional access-token claims** (`email`, `upn`, `groups`) + group claims, configured on the **resource/API** app. |
+
+Sign in as **`bob@entralocal.dev`** (2 groups) to see an inline `groups` array, or
+**`alice@entralocal.dev`** (4 groups) to trigger **group overage** — the token then carries an
+overage pointer and the app resolves membership via `GET /graph/v1.0/me/memberOf`. Both demo apps use
+a deliberately small overage limit (`3`).
+
 ## Conventions
 
 - Each sample runs on **its own port** with its own registered redirect URI (see each README).

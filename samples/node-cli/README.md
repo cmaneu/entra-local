@@ -160,6 +160,25 @@ app the device-code end-to-end test uses.)
 
 ---
 
+## Optional ID-token claims & group claims
+
+This sample can also demonstrate **optional claims configured on the client app registration** — the
+ID token receives claims from the **client** application's token configuration.
+
+A dedicated client app, **`local-web-client`** (`cccccccc-0000-0000-0000-000000000006`), is seeded
+with optional **ID-token** claims (`email`, `upn`, `given_name`, `family_name`, `groups`) and
+`SecurityGroup` group claims. Configure your own app's claims from the portal's **Token
+configuration** card, then decode the issued ID token. Sign in as:
+
+- **`bob@entralocal.dev`** — 2 groups → inline `groups` array in the token.
+- **`alice@entralocal.dev`** — 4 groups (over the demo overage limit of `3`) → the token carries an
+  overage pointer, and you resolve the full list via `GET /graph/v1.0/me/memberOf`.
+
+See **[../../docs/token-configuration.md](../../docs/token-configuration.md)** for the full reference,
+portal steps, and decoded token examples.
+
+---
+
 ## Certificate trust
 
 The emulator serves HTTPS with a **self-signed dev certificate**, so the CLI's outbound calls (MSAL's
