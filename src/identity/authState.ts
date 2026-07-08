@@ -16,7 +16,7 @@ export interface AuthorizeState {
   clientId: string;
   redirectUri: string;
   scope: string;
-  responseMode: 'query' | 'fragment';
+  responseMode: 'query' | 'fragment' | 'form_post';
   state?: string;
   nonce?: string;
   codeChallenge?: string;

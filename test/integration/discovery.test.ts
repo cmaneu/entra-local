@@ -45,7 +45,7 @@ describe('OIDC discovery document shape (criterion 1)', () => {
       userinfo_endpoint: `${ORIGIN}/graph/oidc/userinfo`,
       end_session_endpoint: `${ORIGIN}/${TEST_TENANT_ID}/oauth2/v2.0/logout`,
       response_types_supported: ['code'],
-      response_modes_supported: ['query', 'fragment'],
+      response_modes_supported: ['query', 'fragment', 'form_post'],
       grant_types_supported: [
         'authorization_code',
         'refresh_token',
@@ -138,9 +138,9 @@ describe('OIDC discovery device-code advertisement (criterion 18 / #15)', () => 
       `${ORIGIN}/${TEST_TENANT_ID}/oauth2/v2.0/devicecode`,
     );
 
-    // response_modes_supported is exactly ["query","fragment"] — no form_post in Iteration 1.
-    expect(doc.response_modes_supported).toEqual(['query', 'fragment']);
-    expect(doc.response_modes_supported).not.toContain('form_post');
+    // response_modes_supported includes query, fragment, and form_post (RFC 8693).
+    expect(doc.response_modes_supported).toEqual(['query', 'fragment', 'form_post']);
+    expect(doc.response_modes_supported).toContain('form_post');
 
     // No Microsoft cloud-host fields.
     for (const msField of [
