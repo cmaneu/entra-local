@@ -109,7 +109,50 @@ export interface App {
   exposedScopes: AppScope[];
   appRoles: AppRole[];
   secrets: AppSecret[];
+  optionalClaims: OptionalClaimsConfig;
+  groupMembershipClaims: GroupMembershipClaims;
+  groupOverageLimit: number | null;
   createdAt: string;
+}
+
+/** A single configured optional claim (mirrors the Entra app-manifest shape). */
+export interface OptionalClaim {
+  name: string;
+  essential: boolean;
+}
+
+/** Optional-claim collections supported by Entra Local (SAML is out of scope). */
+export interface OptionalClaimsConfig {
+  idToken: OptionalClaim[];
+  accessToken: OptionalClaim[];
+}
+
+/** Which token collection an optional-claim set applies to. */
+export type OptionalClaimKind = 'idToken' | 'accessToken';
+
+/** Group-membership claim modes an app can be configured with. */
+export type GroupMembershipClaims =
+  | 'None'
+  | 'SecurityGroup'
+  | 'DirectoryRole'
+  | 'ApplicationGroup'
+  | 'All';
+
+/** Metadata about which optional claims + group modes Entra Local supports. */
+export interface SupportedClaims {
+  idToken: string[];
+  accessToken: string[];
+  groupMembershipClaims: GroupMembershipClaims[];
+  defaultGroupOverageLimit: number;
+}
+
+/** Decoded token-claims preview for a selected user + token type. */
+export interface TokenPreview {
+  tokenType: OptionalClaimKind;
+  userId: string;
+  claims: Record<string, unknown>;
+  unsupportedClaims: string[];
+  groupOverage: boolean;
 }
 
 /** A single field-level validation issue from the admin error envelope. */

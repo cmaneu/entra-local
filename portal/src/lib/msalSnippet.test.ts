@@ -21,6 +21,9 @@ function makeApp(over: Partial<App> = {}): App {
     exposedScopes: [],
     appRoles: [],
     secrets: [],
+    optionalClaims: { idToken: [], accessToken: [] },
+    groupMembershipClaims: 'None',
+    groupOverageLimit: null,
     createdAt: '2026-06-22T00:00:00.000Z',
     ...over,
   };

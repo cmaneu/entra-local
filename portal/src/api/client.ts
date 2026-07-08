@@ -8,9 +8,14 @@ import type {
   CreatedSecret,
   Discovery,
   Group,
+  GroupMembershipClaims,
   Health,
+  OptionalClaimKind,
+  OptionalClaimsConfig,
   Paged,
   RedirectUri,
+  SupportedClaims,
+  TokenPreview,
   User,
 } from './types';
 
@@ -171,7 +176,22 @@ export const api = {
     request<AppRole>('PATCH', `${ADMIN}/apps/${id}/roles/${roleId}`, body),
   removeRole: (id: string, roleId: string) =>
     request<void>('DELETE', `${ADMIN}/apps/${id}/roles/${roleId}`),
+
+  // ---- token configuration ----
+  supportedClaims: () =>
+    request<SupportedClaims>('GET', `${ADMIN}/token-configuration/supported-claims`),
+  updateTokenConfig: (id: string, body: TokenConfigBody) =>
+    request<App>('PATCH', `${ADMIN}/apps/${id}`, body),
+  tokenPreview: (id: string, body: { userId: string; tokenType: OptionalClaimKind }) =>
+    request<TokenPreview>('POST', `${ADMIN}/apps/${id}/token-preview`, body),
 };
+
+/** Patch body for an app's token configuration (optional claims + group claims). */
+export interface TokenConfigBody {
+  optionalClaims?: OptionalClaimsConfig;
+  groupMembershipClaims?: GroupMembershipClaims;
+  groupOverageLimit?: number | null;
+}
 
 export interface UserBody {
   userPrincipalName: string;
