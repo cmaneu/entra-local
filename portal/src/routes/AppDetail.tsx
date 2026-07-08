@@ -1,7 +1,19 @@
 import { useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api/client';
-import type { App, AppRole, AppScope, CreatedSecret, RedirectUri } from '../api/types';
+import type {
+  App,
+  AppRole,
+  AppScope,
+  CreatedSecret,
+  GroupMembershipClaims,
+  OptionalClaim,
+  OptionalClaimKind,
+  RedirectUri,
+  SupportedClaims,
+  TokenPreview,
+  User,
+} from '../api/types';
 import { useAsync } from '../hooks/useAsync';
 import { useShell } from '../hooks/useToast';
 import { useEmulator } from '../components/EmulatorContext';
@@ -74,6 +86,7 @@ export function AppDetail(): JSX.Element {
         <SecretList app={app} onChange={reload} />
         <ScopeList app={app} onChange={reload} />
         <AppRoleList app={app} onChange={reload} />
+        <TokenConfigCard app={app} onSaved={reload} />
         <MsalSnippet app={app} />
         <DeleteAppCard app={app} onDeleted={() => navigate('/apps')} />
       </div>
@@ -650,6 +663,353 @@ function AppRoleList({ app, onChange }: { app: App; onChange: () => void }): JSX
         </div>
       )}
     </section>
+  );
+}
+
+// --- MSAL snippet --------------------------------------------------------------------------------
+
+// --- Token configuration -------------------------------------------------------------------------
+
+const GROUP_MEMBERSHIP_OPTIONS: { value: GroupMembershipClaims; label: string }[] = [
+  { value: 'None', label: 'None' },
+  { value: 'SecurityGroup', label: 'Security groups' },
+  { value: 'DirectoryRole', label: 'Directory roles' },
+  { value: 'ApplicationGroup', label: 'Application groups' },
+  { value: 'All', label: 'All groups' },
+];
+
+/** Clone the app's optional-claims config so local edits don't mutate the loaded app. */
+function cloneClaims(app: App): { idToken: OptionalClaim[]; accessToken: OptionalClaim[] } {
+  return {
+    idToken: app.optionalClaims.idToken.map((c) => ({ ...c })),
+    accessToken: app.optionalClaims.accessToken.map((c) => ({ ...c })),
+  };
+}
+
+/**
+ * Token configuration (feature #token-config): edit optional claims (ID + access token) and group
+ * claims, and preview the decoded token for a selected user. ID-token claims apply to the *client*
+ * app; access-token claims apply to the *resource/API* app — the card spells this out so developers
+ * configure the right registration.
+ */
+function TokenConfigCard({ app, onSaved }: { app: App; onSaved: () => void }): JSX.Element {
+  const { toast } = useShell();
+  const [claims, setClaims] = useState(() => cloneClaims(app));
+  const [groupMode, setGroupMode] = useState<GroupMembershipClaims>(app.groupMembershipClaims);
+  const [overageLimit, setOverageLimit] = useState<string>(
+    app.groupOverageLimit === null ? '' : String(app.groupOverageLimit),
+  );
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | undefined>(undefined);
+
+  const { data: supported } = useAsync<SupportedClaims>(() => api.supportedClaims(), []);
+
+  function addClaim(kind: OptionalClaimKind, name: string): void {
+    if (!name) return;
+    setClaims((prev) => {
+      if (prev[kind].some((c) => c.name === name)) return prev;
+      return { ...prev, [kind]: [...prev[kind], { name, essential: false }] };
+    });
+  }
+
+  function removeClaim(kind: OptionalClaimKind, name: string): void {
+    setClaims((prev) => ({ ...prev, [kind]: prev[kind].filter((c) => c.name !== name) }));
+  }
+
+  async function save(): Promise<void> {
+    setBusy(true);
+    setError(undefined);
+    try {
+      const trimmed = overageLimit.trim();
+      const parsedLimit = trimmed === '' ? null : Number(trimmed);
+      if (parsedLimit !== null && (!Number.isInteger(parsedLimit) || parsedLimit < 1)) {
+        setError('Group overage limit must be a positive whole number.');
+        setBusy(false);
+        return;
+      }
+      await api.updateTokenConfig(app.id, {
+        optionalClaims: claims,
+        groupMembershipClaims: groupMode,
+        groupOverageLimit: parsedLimit,
+      });
+      toast('Token configuration saved.');
+      onSaved();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Unexpected error.';
+      setError(message);
+      toast(message, 'bad');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="card">
+      <div className="card-head">
+        <h2 className="h-md">Token configuration</h2>
+        <Button size="sm" onClick={() => void save()} busy={busy}>
+          Save
+        </Button>
+      </div>
+      <p className="b-sm muted" style={{ margin: '0 0 16px' }}>
+        <strong>ID token</strong> claims are configured on the <strong>client</strong> app. Access
+        token claims are configured on the <strong>resource / API</strong> app whose{' '}
+        <span className="mono">api://</span> scope the client requests — not on the calling client.
+      </p>
+
+      <OptionalClaimEditor
+        kind="idToken"
+        title="ID token — optional claims"
+        entries={claims.idToken}
+        supported={supported?.idToken ?? []}
+        onAdd={(name) => addClaim('idToken', name)}
+        onRemove={(name) => removeClaim('idToken', name)}
+      />
+      <OptionalClaimEditor
+        kind="accessToken"
+        title="Access token — optional claims"
+        entries={claims.accessToken}
+        supported={supported?.accessToken ?? []}
+        onAdd={(name) => addClaim('accessToken', name)}
+        onRemove={(name) => removeClaim('accessToken', name)}
+      />
+
+      <div className="stack-fields" style={{ marginTop: 8 }}>
+        <Field
+          label="Group claims"
+          htmlFor="group-mode"
+          help="Emit the user's group memberships as a groups claim. Overage-sized memberships fall back to a Graph memberOf lookup."
+        >
+          <Select
+            id="group-mode"
+            value={groupMode}
+            onChange={(e) => setGroupMode(e.target.value as GroupMembershipClaims)}
+          >
+            {GROUP_MEMBERSHIP_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field
+          label="Group overage limit"
+          htmlFor="overage-limit"
+          optional
+          help={
+            supported
+              ? `Blank uses the server default (${supported.defaultGroupOverageLimit}). When exceeded, tokens carry an overage claim instead of the full groups array.`
+              : 'Blank uses the server default.'
+          }
+        >
+          <TextInput
+            id="overage-limit"
+            type="number"
+            min={1}
+            style={{ width: 140 }}
+            value={overageLimit}
+            onChange={(e) => setOverageLimit(e.target.value)}
+            placeholder={supported ? String(supported.defaultGroupOverageLimit) : '200'}
+          />
+        </Field>
+      </div>
+
+      {error && (
+        <div className="field-error" style={{ marginTop: 8 }}>
+          {error}
+        </div>
+      )}
+
+      <TokenPreviewPanel app={app} />
+    </section>
+  );
+}
+
+/** One optional-claim collection editor: current chips (with unsupported badges) + an add control. */
+function OptionalClaimEditor({
+  kind,
+  title,
+  entries,
+  supported,
+  onAdd,
+  onRemove,
+}: {
+  kind: OptionalClaimKind;
+  title: string;
+  entries: OptionalClaim[];
+  supported: string[];
+  onAdd: (name: string) => void;
+  onRemove: (name: string) => void;
+}): JSX.Element {
+  const [pick, setPick] = useState('');
+  const available = supported.filter((name) => !entries.some((c) => c.name === name));
+  const selectId = `add-${kind}`;
+
+  return (
+    <div className="field" style={{ marginBottom: 16 }}>
+      <label htmlFor={selectId}>{title}</label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '4px 0 8px' }}>
+        {entries.length === 0 && <span className="muted b-sm">No optional claims configured.</span>}
+        {entries.map((c) => {
+          const unsupported = !supported.includes(c.name);
+          return (
+            <span key={c.name} className="chip-plain" style={{ display: 'inline-flex', gap: 6 }}>
+              <span className="mono">{c.name}</span>
+              {unsupported && (
+                <span
+                  className="pill warn"
+                  title="Not emitted by Entra Local; preserved in config."
+                >
+                  unsupported
+                </span>
+              )}
+              <button
+                type="button"
+                className="link"
+                aria-label={`Remove ${c.name} from ${kind}`}
+                onClick={() => onRemove(c.name)}
+              >
+                ✕
+              </button>
+            </span>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Select
+          id={selectId}
+          value={pick}
+          style={{ width: 220 }}
+          aria-label={`Add optional claim to ${kind}`}
+          onChange={(e) => setPick(e.target.value)}
+        >
+          <option value="">Add a supported claim…</option>
+          {available.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </Select>
+        <Button
+          size="sm"
+          disabled={!pick}
+          onClick={() => {
+            onAdd(pick);
+            setPick('');
+          }}
+        >
+          Add
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Decoded token preview for a selected user + token type; provably matches the issued token. */
+function TokenPreviewPanel({ app }: { app: App }): JSX.Element {
+  const [userId, setUserId] = useState('');
+  const [tokenType, setTokenType] = useState<OptionalClaimKind>('idToken');
+  const [preview, setPreview] = useState<TokenPreview | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | undefined>(undefined);
+
+  const { data: users } = useAsync(() => api.listUsers({ top: 100 }), []);
+  const userList: User[] = users?.value ?? [];
+
+  async function run(): Promise<void> {
+    if (!userId) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      const result = await api.tokenPreview(app.id, { userId, tokenType });
+      setPreview(result);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Unexpected error.');
+      setPreview(undefined);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      className="token-preview"
+      style={{ marginTop: 20, borderTop: '1px solid var(--line)', paddingTop: 16 }}
+    >
+      <h3 className="h-sm" style={{ margin: '0 0 8px' }}>
+        Token preview
+      </h3>
+      <p className="b-sm muted" style={{ margin: '0 0 12px' }}>
+        Previews the decoded {tokenType === 'idToken' ? 'ID' : 'access'} token this app would issue
+        for the selected user, applying the unsaved-to-server configuration currently stored on this
+        app registration.
+      </p>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <div className="field" style={{ margin: 0 }}>
+          <label htmlFor="preview-user">User</label>
+          <Select
+            id="preview-user"
+            value={userId}
+            style={{ width: 240 }}
+            onChange={(e) => setUserId(e.target.value)}
+          >
+            <option value="">Select a user…</option>
+            {userList.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.displayName} ({u.userPrincipalName})
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="field" style={{ margin: 0 }}>
+          <label htmlFor="preview-type">Token type</label>
+          <Select
+            id="preview-type"
+            value={tokenType}
+            style={{ width: 160 }}
+            onChange={(e) => setTokenType(e.target.value as OptionalClaimKind)}
+          >
+            <option value="idToken">ID token</option>
+            <option value="accessToken">Access token</option>
+          </Select>
+        </div>
+        <Button onClick={() => void run()} busy={busy} disabled={!userId}>
+          Preview
+        </Button>
+      </div>
+
+      {error && (
+        <div className="field-error" style={{ marginTop: 8 }}>
+          {error}
+        </div>
+      )}
+
+      {preview && (
+        <>
+          {preview.groupOverage && (
+            <Banner tone="caution" className="mt12">
+              Group overage: too many groups for a <span className="mono">groups</span> array, so an
+              overage claim was emitted. The app should call{' '}
+              <span className="mono">/graph/v1.0/me/memberOf</span> to resolve full membership.
+            </Banner>
+          )}
+          {preview.unsupportedClaims.length > 0 && (
+            <Banner tone="caution" className="mt12">
+              Unsupported claims (preserved but not emitted):{' '}
+              <span className="mono">{preview.unsupportedClaims.join(', ')}</span>
+            </Banner>
+          )}
+          <pre
+            className="code"
+            role="region"
+            aria-label="Decoded token preview"
+            data-testid="token-preview"
+          >
+            {JSON.stringify(preview.claims, null, 2)}
+          </pre>
+        </>
+      )}
+    </div>
   );
 }
 
