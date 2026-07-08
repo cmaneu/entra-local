@@ -942,7 +942,7 @@ function TokenPreviewPanel({ app }: { app: App }): JSX.Element {
       <p className="b-sm muted" style={{ margin: '0 0 12px' }}>
         Previews the decoded {tokenType === 'idToken' ? 'ID' : 'access'} token this app would issue
         for the selected user, applying this app registration's currently saved token configuration.
-        Save your edits first to preview them.
+        To preview unsaved changes, save your token configuration first.
       </p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div className="field" style={{ margin: 0 }}>
