@@ -59,6 +59,35 @@ export const memberAddSchema = z.object({
 
 // --- Apps ----------------------------------------------------------------------------------------
 
+/** A single optional-claim entry (Entra `optionalClaims.{idToken,accessToken}[]` shape). */
+const optionalClaimSchema = z.object({
+  name: z.string().min(1),
+  essential: z.boolean().optional(),
+  source: z.string().nullable().optional(),
+  additionalProperties: z.array(z.string()).optional(),
+});
+
+/** Optional-claims configuration for the supported token collections (SAML is out of scope). */
+export const optionalClaimsSchema = z.object({
+  idToken: z.array(optionalClaimSchema).default([]),
+  accessToken: z.array(optionalClaimSchema).default([]),
+});
+
+/** Supported group-membership claim modes. */
+export const groupMembershipClaimsSchema = z.enum([
+  'None',
+  'SecurityGroup',
+  'DirectoryRole',
+  'ApplicationGroup',
+  'All',
+]);
+
+/** Token-preview request: pick a user + token type (and optional resource app for access tokens). */
+export const tokenPreviewSchema = z.object({
+  userId: z.string().min(1),
+  tokenType: z.enum(['idToken', 'accessToken']).default('idToken'),
+});
+
 export const appCreateSchema = z.object({
   displayName: z.string().min(1),
   isConfidential: z.boolean().default(false),
@@ -78,6 +107,9 @@ export const appPatchSchema = z
     displayName: z.string().min(1),
     isConfidential: z.boolean(),
     appIdUri: z.string().min(1).nullable(),
+    optionalClaims: optionalClaimsSchema,
+    groupMembershipClaims: groupMembershipClaimsSchema,
+    groupOverageLimit: z.coerce.number().int().min(1).nullable(),
   })
   .partial();
 

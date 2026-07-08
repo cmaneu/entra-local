@@ -170,8 +170,10 @@ function sendCollection<T>(
 /** The bound Graph route handlers, ready to register under the `/graph` plugin. */
 export interface GraphHandlers {
   me: RouteHandlerMethod;
+  meMemberOf: RouteHandlerMethod;
   listUsers: RouteHandlerMethod;
   getUser: RouteHandlerMethod;
+  getUserMemberOf: RouteHandlerMethod;
   listGroups: RouteHandlerMethod;
   getGroup: RouteHandlerMethod;
   listGroupMembers: RouteHandlerMethod;
@@ -228,6 +230,28 @@ export function createGraphHandlers(deps: GraphDeps): GraphHandlers {
         .send(toGraphUser(user, odataContext(config, 'users/$entity')));
     },
 
+    async meMemberOf(request, reply) {
+      const claims = await authenticate(request, reply);
+      if (!claims) return;
+      if (claims.oid == null || claims.oid === '') {
+        sendGraphError(
+          reply,
+          403,
+          'Authorization_RequestDenied',
+          '/me/memberOf requires a delegated user token.',
+        );
+        return;
+      }
+      if (!store.users.getById(claims.oid)) {
+        sendGraphError(reply, 404, 'Request_ResourceNotFound', 'The signed-in user was not found.');
+        return;
+      }
+      const groups = store.groups.listGroupsForUser(claims.oid);
+      sendCollection(request, reply, config, 'directoryObjects', groups.length, (skip, top) =>
+        groups.slice(skip, skip + top).map((g) => toGraphGroup(g)),
+      );
+    },
+
     async listUsers(request, reply) {
       const claims = await authenticate(request, reply);
       if (!claims) return;
@@ -254,6 +278,26 @@ export function createGraphHandlers(deps: GraphDeps): GraphHandlers {
         .code(200)
         .type('application/json')
         .send(toGraphUser(user, odataContext(config, 'users/$entity')));
+    },
+
+    async getUserMemberOf(request, reply) {
+      const claims = await authenticate(request, reply);
+      if (!claims) return;
+      const id = (request.params as { id: string }).id;
+      const user = store.users.getById(id) ?? store.users.getByUpn(id);
+      if (!user) {
+        sendGraphError(
+          reply,
+          404,
+          'Request_ResourceNotFound',
+          `No user matches the identifier '${id}'.`,
+        );
+        return;
+      }
+      const groups = store.groups.listGroupsForUser(user.id);
+      sendCollection(request, reply, config, 'directoryObjects', groups.length, (skip, top) =>
+        groups.slice(skip, skip + top).map((g) => toGraphGroup(g)),
+      );
     },
 
     async listGroups(request, reply) {

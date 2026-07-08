@@ -40,6 +40,22 @@ export const SEED = {
   apiAdminScopeId: 'dddddddd-0000-0000-0000-000000000003',
   apiAdminScopeValue: 'access_as_admin',
   spaFrontRedirectUri: 'http://localhost:5173',
+  /**
+   * Token-configuration sample (optional claims + group claims). A dedicated web client and API
+   * resource app plus a richer set of users/groups so developers can exercise optional ID-token
+   * claims, optional access-token claims, group claims, and group-overage behavior without touching
+   * the other samples' registrations. Group IDs are fixed so the `groups` claim is stable.
+   */
+  appWebClientId: 'cccccccc-0000-0000-0000-000000000006',
+  appTokenApiId: 'cccccccc-0000-0000-0000-000000000007',
+  tokenApiScopeId: 'dddddddd-0000-0000-0000-000000000004',
+  tokenApiScopeValue: 'access_as_user',
+  webClientRedirectUri: 'http://localhost:3000',
+  /** Group overage limit on the sample apps — deliberately small so a 4-group user overflows. */
+  sampleGroupOverageLimit: 3,
+  groupDevelopersId: 'bbbbbbbb-0000-0000-0000-000000000002',
+  groupDataTeamId: 'bbbbbbbb-0000-0000-0000-000000000003',
+  groupLocalAdminsId: 'bbbbbbbb-0000-0000-0000-000000000004',
   /** Known dev-only credentials. */
   userPassword: 'Password1!',
   daemonSecret: 'daemon-app-secret',
@@ -240,6 +256,98 @@ export function seed(db: Database, clock: Clock, options: SeedOptions): SeedResu
       SEED.appApiId,
       SEED.apiAdminScopeValue,
       'Access the Sample API with administrative scope',
+    );
+
+    // --- Token-configuration sample (optional claims + group claims) ------------------------------
+    // Extra groups + memberships (on the existing Alice/Bob users) so optional/group claims and the
+    // overage payload are demonstrable. Alice lands in 4 groups (> the sample overage limit of 3, so
+    // her tokens carry an overage claim); Bob stays under the limit and receives a `groups` array.
+    for (const g of [
+      { id: SEED.groupDevelopersId, name: 'Developers', desc: 'Local developers group' },
+      { id: SEED.groupDataTeamId, name: 'Data Team', desc: 'Data team' },
+      { id: SEED.groupLocalAdminsId, name: 'Local Admins', desc: 'Local administrators' },
+    ]) {
+      run(
+        `INSERT OR IGNORE INTO groups (id, tenant_id, display_name, description, created_at)
+         VALUES (?, ?, ?, ?, ?)`,
+        g.id,
+        options.tenantId,
+        g.name,
+        g.desc,
+        now,
+      );
+    }
+    const memberships: [string, string][] = [
+      [SEED.groupDevelopersId, SEED.userAliceId],
+      [SEED.groupDataTeamId, SEED.userAliceId],
+      [SEED.groupLocalAdminsId, SEED.userAliceId],
+      [SEED.groupDevelopersId, SEED.userBobId],
+    ];
+    for (const [groupId, userId] of memberships) {
+      run(`INSERT OR IGNORE INTO group_members (group_id, user_id) VALUES (?, ?)`, groupId, userId);
+    }
+
+    // local-web-client: public SPA whose *ID token* receives optional claims + security-group claims.
+    run(
+      `INSERT OR IGNORE INTO app_registrations
+         (app_id, tenant_id, display_name, is_confidential, app_id_uri,
+          optional_claims, group_membership_claims, group_overage_limit, created_at)
+       VALUES (?, ?, ?, 0, ?, ?, 'SecurityGroup', ?, ?)`,
+      SEED.appWebClientId,
+      options.tenantId,
+      'local-web-client',
+      `api://${SEED.appWebClientId}`,
+      JSON.stringify({
+        idToken: [
+          { name: 'email', essential: false },
+          { name: 'upn', essential: false },
+          { name: 'given_name', essential: false },
+          { name: 'family_name', essential: false },
+          { name: 'groups', essential: false },
+        ],
+        accessToken: [],
+      }),
+      SEED.sampleGroupOverageLimit,
+      now,
+    );
+    run(
+      `INSERT OR IGNORE INTO app_redirect_uris (app_id, uri, type) VALUES (?, ?, ?)`,
+      SEED.appWebClientId,
+      SEED.webClientRedirectUri,
+      'spa',
+    );
+
+    // local-api: resource/API app whose *access token* receives optional claims + group claims. The
+    // web client requests `api://<appTokenApiId>/access_as_user`, so the token's `aud` is this app
+    // and its access-token token-configuration applies (not the client's).
+    run(
+      `INSERT OR IGNORE INTO app_registrations
+         (app_id, tenant_id, display_name, is_confidential, app_id_uri,
+          optional_claims, group_membership_claims, group_overage_limit, created_at)
+       VALUES (?, ?, ?, 0, ?, ?, 'SecurityGroup', ?, ?)`,
+      SEED.appTokenApiId,
+      options.tenantId,
+      'local-api',
+      `api://${SEED.appTokenApiId}`,
+      JSON.stringify({
+        idToken: [],
+        accessToken: [
+          { name: 'email', essential: false },
+          { name: 'upn', essential: false },
+          { name: 'groups', essential: false },
+        ],
+      }),
+      SEED.sampleGroupOverageLimit,
+      now,
+    );
+    run(
+      `INSERT OR IGNORE INTO app_scopes
+         (id, app_id, value, admin_consent_display_name, is_enabled)
+       VALUES (?, ?, ?, ?, 1)`,
+      SEED.tokenApiScopeId,
+      SEED.appTokenApiId,
+      SEED.tokenApiScopeValue,
+      'Access the local API as the signed-in user',
     );
 
     return { inserted };

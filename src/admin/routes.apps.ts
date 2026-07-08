@@ -21,7 +21,13 @@ import {
   scopeCreateSchema,
   scopePatchSchema,
   secretCreateSchema,
+  tokenPreviewSchema,
 } from './schemas.js';
+import { GROUP_MEMBERSHIP_CLAIMS_VALUES } from '../store/types.js';
+import {
+  SUPPORTED_ACCESS_TOKEN_CLAIMS,
+  SUPPORTED_ID_TOKEN_CLAIMS,
+} from '../tokens/tokenConfig.js';
 
 interface IdParams {
   id: string;
@@ -258,4 +264,36 @@ export function registerAppRoutes(app: FastifyInstance): void {
       return null;
     },
   );
+
+  // --- Token configuration ----------------------------------------------------------------------
+
+  // Supported optional claims + group-membership modes (portal distinguishes supported claims and
+  // shows the default group overage limit). Static metadata; independent of any specific app.
+  app.get('/api/token-configuration/supported-claims', () => ({
+    idToken: [...SUPPORTED_ID_TOKEN_CLAIMS],
+    accessToken: [...SUPPORTED_ACCESS_TOKEN_CLAIMS],
+    groupMembershipClaims: [...GROUP_MEMBERSHIP_CLAIMS_VALUES],
+    defaultGroupOverageLimit: app.config.groupOverageLimit,
+  }));
+
+  // Decoded token-claims preview for a selected user + token type. The preview applies the app's
+  // configured optional/group claims exactly as issuance would, so it provably matches the token.
+  app.post('/api/apps/:id/token-preview', (request: FastifyRequest<{ Params: IdParams }>) => {
+    const registration = requireApp(request.params.id);
+    const body = tokenPreviewSchema.parse(request.body);
+    const user = store.users.getById(body.userId) ?? store.users.getByUpn(body.userId);
+    if (!user) throw notFound(`No user with id '${body.userId}'.`);
+    const preview = app.tokenService.previewToken({
+      app: registration,
+      user,
+      tokenType: body.tokenType,
+    });
+    return {
+      tokenType: body.tokenType,
+      userId: user.id,
+      claims: preview.claims,
+      unsupportedClaims: preview.unsupportedClaims,
+      groupOverage: preview.groupOverage,
+    };
+  });
 }
