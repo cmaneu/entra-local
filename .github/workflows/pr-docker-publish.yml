@@ -30,6 +30,18 @@ jobs:
       )
     runs-on: ubuntu-latest
     steps:
+      # Acknowledge the trigger immediately by reacting with 👀 on the comment so the author
+      # knows the build has kicked in, even before the (slower) image build starts.
+      - name: React to trigger comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" \
+            -f content=eyes
+
       # The `issue_comment` event runs in the default-branch context; look up the PR head SHA
       # explicitly so we check out (and build) the actual PR commit.
       - name: Resolve PR head SHA and number
