@@ -397,6 +397,13 @@
 - **Rationale**: `issue_comment` is the standard GitHub Actions trigger for slash-command workflows on PRs. Resolving the PR head SHA explicitly ensures the correct commit is built even though the event fires in the default-branch context. Tagging only with the commit SHA (not `latest` or any semver tag) keeps the dev-build artefacts isolated from the release pipeline. The PR reply closes the feedback loop so reviewers know immediately which image to pull.
 - **Alternatives**: A `workflow_dispatch` with a PR number input (rejected — requires navigating to the Actions tab rather than a chat-style command); a `pull_request_review_comment` trigger (rejected — only fires on inline code review comments, not top-level PR conversation comments); a label-based trigger (rejected — requires a separate label-management step and is less discoverable than a text command).
 
+### PR Docker image cleanup (issue #25)
+- **Date**: 2026-07-10
+- **Context**: Moving the mutable `dev-pr-{N}` tag to a new PR build left the previous package version reachable through its commit-SHA tag, and cleanup only ran for merged PRs.
+- **Decision**: Every PR publish also applies a persistent `dev-pr-{N}-{sha}` tag. The PR Docker workflow deletes the complete matching GHCR package versions (rather than deleting tags) when `/docker-unpublish` is commented or when the PR is closed, whether merged or abandoned. Cleanup matches both the mutable `dev-pr-{N}` tag and all persistent tags with the `dev-pr-{N}-` prefix.
+- **Rationale**: A persistent per-version marker preserves the PR association after the mutable tag moves, allowing all images built for that PR to be found and deleting every tag on each matching package version.
+- **Alternatives**: Delete only the current mutable tag (rejected because earlier SHA-tagged versions remain); infer versions from the PR's current commit list (rejected because force-pushed commits disappear from that list); remove images only after merge (rejected because abandoned PRs leak images).
+
 ### Portal cert-trust section + public cert-download API + "Entra Local emulator" cert OU
 - **Date**: 2026-07-06
 - **Context**: The emulator serves HTTPS with a self-signed cert. The `entra-local trust` CLI (#25) automates trusting it for the source/binary run targets, but the **Docker** target has no host CLI, so container users were left to manually locate and trust the cert. The user asked for a portal section (with a dashboard message) that hands developers a ready-to-run trust script for Windows/macOS/Linux, exposing the cert's public key via the API, and to make the cert subject identify itself as the Entra Local emulator.
