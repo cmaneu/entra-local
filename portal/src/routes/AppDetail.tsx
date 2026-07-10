@@ -35,6 +35,7 @@ export function AppDetail(): JSX.Element {
   const navigate = useNavigate();
   const load = useCallback(() => api.getApp(id), [id]);
   const { data: app, loading, error, reload } = useAsync<App>(load, [id]);
+  const [section, setSection] = useState<AppDetailSection>('basics');
 
   if (loading && !app) {
     return (
@@ -80,19 +81,55 @@ export function AppDetail(): JSX.Element {
         </div>
       </div>
 
-      <div className="stack">
-        <BasicsForm app={app} onSaved={reload} />
-        <RedirectUriList app={app} onChange={reload} />
-        <SecretList app={app} onChange={reload} />
-        <ScopeList app={app} onChange={reload} />
-        <AppRoleList app={app} onChange={reload} />
-        <TokenConfigCard app={app} onSaved={reload} />
-        <MsalSnippet app={app} />
-        <DeleteAppCard app={app} onDeleted={() => navigate('/apps')} />
+      <div className="detail-layout">
+        <div className="detail-rail">
+          <Tabs
+            orientation="vertical"
+            ariaLabel="App registration sections"
+            active={section}
+            onChange={setSection}
+            tabs={APP_DETAIL_SECTIONS}
+          />
+        </div>
+        <div className="detail-panel">
+          <div className="stack">
+            {section === 'basics' && <BasicsForm app={app} onSaved={reload} />}
+            {section === 'auth' && <RedirectUriList app={app} onChange={reload} />}
+            {section === 'secrets' && <SecretList app={app} onChange={reload} />}
+            {section === 'scopes' && <ScopeList app={app} onChange={reload} />}
+            {section === 'roles' && <AppRoleList app={app} onChange={reload} />}
+            {section === 'tokens' && <TokenConfigCard app={app} onSaved={reload} />}
+            {section === 'msal' && <MsalSnippet app={app} />}
+            {section === 'delete' && (
+              <DeleteAppCard app={app} onDeleted={() => navigate('/apps')} />
+            )}
+          </div>
+        </div>
       </div>
     </>
   );
 }
+
+type AppDetailSection =
+  | 'basics'
+  | 'auth'
+  | 'secrets'
+  | 'scopes'
+  | 'roles'
+  | 'tokens'
+  | 'msal'
+  | 'delete';
+
+const APP_DETAIL_SECTIONS: { id: AppDetailSection; label: string }[] = [
+  { id: 'basics', label: 'Basics' },
+  { id: 'auth', label: 'Authentication' },
+  { id: 'secrets', label: 'Certificates & secrets' },
+  { id: 'scopes', label: 'Expose an API' },
+  { id: 'roles', label: 'App roles' },
+  { id: 'tokens', label: 'Token configuration' },
+  { id: 'msal', label: 'MSAL configuration' },
+  { id: 'delete', label: 'Delete' },
+];
 
 // --- Basics --------------------------------------------------------------------------------------
 
