@@ -33,6 +33,27 @@ function renderDetail(): void {
   });
 }
 
+describe('AppDetail — sections', () => {
+  it('shows Basics by default and switches sections via the vertical tabs', async () => {
+    installFetch(({ method, path }) => {
+      if (method === 'GET' && path === `/admin/api/apps/${APP_ID}`) return { body: app() };
+      return undefined;
+    });
+    renderDetail();
+
+    // The section rail is a vertical tablist; Basics is selected by default.
+    const rail = await screen.findByRole('tablist', { name: 'App registration sections' });
+    expect(rail).toHaveAttribute('aria-orientation', 'vertical');
+    expect(screen.getByRole('tab', { name: 'Basics' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText('Display name')).toBeInTheDocument();
+
+    // Switching to Authentication reveals the redirect URIs panel.
+    await userEvent.click(screen.getByRole('tab', { name: 'Authentication' }));
+    expect(await screen.findByText('Redirect URIs')).toBeInTheDocument();
+    expect(screen.queryByText('Display name')).not.toBeInTheDocument();
+  });
+});
+
 describe('AppDetail — MSAL snippet', () => {
   it('renders a snippet with authority, clientId, redirectUri, scopes, knownAuthorities + graph base', async () => {
     installFetch(({ method, path }) => {
@@ -40,6 +61,8 @@ describe('AppDetail — MSAL snippet', () => {
       return undefined;
     });
     renderDetail();
+
+    await userEvent.click(await screen.findByRole('tab', { name: 'MSAL configuration' }));
 
     const snippet = await screen.findByTestId('msal-snippet');
     const text = snippet.textContent ?? '';
@@ -92,6 +115,7 @@ describe('AppDetail — secret show-once', () => {
     });
     renderDetail();
 
+    await userEvent.click(await screen.findByRole('tab', { name: 'Certificates & secrets' }));
     await screen.findByText('Client secrets');
     await userEvent.click(screen.getByRole('button', { name: /New secret/ }));
     await userEvent.type(screen.getByLabelText('Secret description'), 'CI pipeline');
@@ -152,7 +176,8 @@ describe('AppDetail — token configuration', () => {
     });
     renderDetail();
 
-    await screen.findByText('Token configuration');
+    await userEvent.click(await screen.findByRole('tab', { name: 'Token configuration' }));
+    await screen.findByRole('heading', { name: 'Token configuration' });
     // The unsupported 'acct' claim is preserved and flagged; wait for supported-claims to load.
     expect(await screen.findByText('unsupported')).toBeInTheDocument();
     expect(screen.getByText('acct')).toBeInTheDocument();
@@ -165,7 +190,7 @@ describe('AppDetail — token configuration', () => {
     await userEvent.click(within(idAddRow).getByRole('button', { name: 'Add' }));
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-    await screen.findByText('Token configuration');
+    await screen.findByRole('heading', { name: 'Token configuration' });
     expect(patched).toBeDefined();
     const claims = (patched!.optionalClaims as { idToken: { name: string }[] }).idToken.map(
       (c) => c.name,
@@ -220,6 +245,7 @@ describe('AppDetail — token configuration', () => {
     });
     renderDetail();
 
+    await userEvent.click(await screen.findByRole('tab', { name: 'Token configuration' }));
     await screen.findByText('Token preview');
     await screen.findByRole('option', { name: /Alice Example/ });
     await userEvent.selectOptions(screen.getByLabelText('User'), 'u-alice');

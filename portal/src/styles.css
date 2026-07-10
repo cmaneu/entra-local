@@ -777,6 +777,64 @@ textarea.input {
   outline-offset: 1px;
 }
 
+/* ---- vertical tabs (detail rail) ---- */
+.detail-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+.detail-rail {
+  width: 220px;
+  flex: none;
+  position: sticky;
+  top: 24px;
+}
+.detail-panel {
+  flex: 1;
+  min-width: 0;
+}
+.tabs.vertical {
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: none;
+  margin-bottom: 0;
+  align-items: stretch;
+}
+.tabs.vertical .tab {
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: var(--r-md);
+  border-bottom: none;
+  border-left: 2px solid transparent;
+  margin-bottom: 0;
+  color: var(--neutral-20);
+}
+.tabs.vertical .tab:hover {
+  background: var(--neutral-95);
+  color: var(--neutral-10);
+}
+.tabs.vertical .tab.active {
+  background: var(--primary-90);
+  color: var(--primary-30);
+  border-bottom-color: transparent;
+  border-left-color: var(--primary-60);
+}
+@media (max-width: 640px) {
+  .detail-layout {
+    flex-direction: column;
+  }
+  .detail-rail {
+    width: 100%;
+    position: static;
+  }
+  .tabs.vertical {
+    flex-direction: row;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--neutral-85);
+    padding-bottom: 2px;
+  }
+}
+
 /* ---- code block / snippet ---- */
 .code {
   position: relative;
