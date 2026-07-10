@@ -170,6 +170,7 @@ describe('Portal e2e (#12)', () => {
 
     // …and the React router actually renders the App detail route for the deep link.
     const page = await openPortal(`/apps/${SEED.appSpaId}`);
+    await page.getByRole('tab', { name: 'MSAL configuration' }).click();
     await page.getByTestId('msal-snippet').waitFor({ timeout: 30_000 });
     await page.close();
   }, 60_000);
@@ -241,9 +242,11 @@ describe('Portal e2e (#12)', () => {
     // Confidential so the show-once secret is the realistic path.
     await page.getByRole('switch', { name: 'Confidential client' }).click();
     await page.getByRole('button', { name: 'Create app' }).click();
+    await page.getByRole('tab', { name: 'MSAL configuration' }).click();
     await page.getByTestId('msal-snippet').waitFor({ timeout: 30_000 });
 
     // Redirect URI.
+    await page.getByRole('tab', { name: 'Authentication' }).click();
     const redirectSection = page.locator('section', { hasText: 'Redirect URIs' });
     await page.getByLabel('New redirect URI').fill('https://localhost:3000/callback');
     await page.getByLabel('Redirect URI type').selectOption('spa');
@@ -254,6 +257,7 @@ describe('Portal e2e (#12)', () => {
       .waitFor({ timeout: 15_000 });
 
     // Exposed scope.
+    await page.getByRole('tab', { name: 'Expose an API' }).click();
     const scopeSection = page.locator('section', { hasText: 'Exposed scopes' });
     await page.getByRole('button', { name: /Add scope/ }).click();
     await page.getByLabel('Scope value').fill('access_as_user');
@@ -261,6 +265,7 @@ describe('Portal e2e (#12)', () => {
     await page.getByText('access_as_user').first().waitFor({ timeout: 15_000 });
 
     // App role.
+    await page.getByRole('tab', { name: 'App roles' }).click();
     const roleSection = page.locator('section', { hasText: 'App roles' });
     await page.getByRole('button', { name: /Add role/ }).click();
     await page.getByLabel('Role value').fill('Tasks.Read');
@@ -268,6 +273,7 @@ describe('Portal e2e (#12)', () => {
     await page.getByText('Tasks.Read').first().waitFor({ timeout: 15_000 });
 
     // Show-once secret: the plaintext appears once in the dialog.
+    await page.getByRole('tab', { name: 'Certificates & secrets' }).click();
     await page.getByRole('button', { name: /New secret/ }).click();
     await page.getByLabel('Secret description').fill('CI pipeline');
     await page.getByRole('button', { name: 'Create secret' }).click();
@@ -327,8 +333,10 @@ describe('Portal e2e (#12)', () => {
       .click();
     await page.getByLabel('Display name').fill(appName);
     await page.getByRole('button', { name: 'Create app' }).click();
+    await page.getByRole('tab', { name: 'MSAL configuration' }).click();
     await page.getByTestId('msal-snippet').waitFor({ timeout: 30_000 });
 
+    await page.getByRole('tab', { name: 'Authentication' }).click();
     await page.getByLabel('New redirect URI').fill(redirectUri);
     await page.getByLabel('Redirect URI type').selectOption('spa');
     await page
@@ -338,6 +346,7 @@ describe('Portal e2e (#12)', () => {
     await page.locator('td', { hasText: redirectUri }).first().waitFor({ timeout: 15_000 });
 
     // 2) Read the EXACT generated msal-browser config from the portal's snippet panel.
+    await page.getByRole('tab', { name: 'MSAL configuration' }).click();
     const snippet = (await page.getByTestId('msal-snippet').textContent()) ?? '';
     const clientId = /clientId:\s*"([^"]+)"/.exec(snippet)?.[1];
     const authority = /authority:\s*"([^"]+)"/.exec(snippet)?.[1];
