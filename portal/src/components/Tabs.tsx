@@ -28,8 +28,13 @@ export function Tabs<T extends string>({
     const index = tabs.findIndex((t) => t.id === active);
     if (index === -1) return;
     const delta = e.key === nextKey ? 1 : -1;
-    const next = tabs[(index + delta + tabs.length) % tabs.length];
-    if (next) onChange(next.id);
+    const nextIndex = (index + delta + tabs.length) % tabs.length;
+    const next = tabs[nextIndex];
+    if (!next) return;
+    onChange(next.id);
+    // Move focus to the newly selected tab so the roving tabindex stays on the active tab.
+    const buttons = e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+    buttons[nextIndex]?.focus();
   }
 
   return (
