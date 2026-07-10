@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AppDetail } from './AppDetail';
@@ -209,7 +209,9 @@ describe('AppDetail — token configuration', () => {
     expect(patched!.groupOverageLimit).toBe(3);
   });
 
-  it('previews a decoded token for a selected user', async () => {
+  it('generates and copies a token for a selected user', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
     installFetch(({ method, path }) => {
       if (method === 'GET' && path === `/admin/api/apps/${APP_ID}`) return { body: app() };
       if (method === 'GET' && path === '/admin/api/token-configuration/supported-claims') {
@@ -237,11 +239,12 @@ describe('AppDetail — token configuration', () => {
           },
         };
       }
-      if (method === 'POST' && path === `/admin/api/apps/${APP_ID}/token-preview`) {
+      if (method === 'POST' && path === `/admin/api/apps/${APP_ID}/token-generate`) {
         return {
           body: {
             tokenType: 'idToken',
             userId: 'u-alice',
+            token: 'header.payload.signature',
             claims: { email: 'alice@entralocal.dev', groups: ['g1', 'g2'] },
             unsupportedClaims: [],
             groupOverage: false,
@@ -253,13 +256,18 @@ describe('AppDetail — token configuration', () => {
     renderDetail();
 
     await userEvent.click(await screen.findByRole('tab', { name: 'Token configuration' }));
-    await screen.findByText('Token preview');
+    await screen.findByRole('heading', { name: 'Generate token' });
     await screen.findByRole('option', { name: /Alice Example/ });
     await userEvent.selectOptions(screen.getByLabelText('User'), 'u-alice');
-    await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Generate token' }));
 
+    expect(await screen.findByTestId('generated-token')).toHaveTextContent(
+      'header.payload.signature',
+    );
     const preview = await screen.findByTestId('token-preview');
     expect(preview.textContent).toContain('alice@entralocal.dev');
     expect(preview.textContent).toContain('groups');
+    await userEvent.click(screen.getByRole('button', { name: '⧉ Copy' }));
+    expect(writeText).toHaveBeenCalledWith('header.payload.signature');
   });
 });

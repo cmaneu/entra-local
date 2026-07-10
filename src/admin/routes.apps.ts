@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { AppRegistration, NewApp } from '../store/types.js';
+import type { AccessTokenClaims, IdTokenClaims } from '../tokens/claims.js';
 import {
   toAppDto,
   toPaged,
@@ -293,4 +294,32 @@ export function registerAppRoutes(app: FastifyInstance): void {
       groupOverage: preview.groupOverage,
     };
   });
+
+  // Signed local-development token using the exact same claim assembly as the decoded preview.
+  app.post(
+    '/api/apps/:id/token-generate',
+    async (request: FastifyRequest<{ Params: IdParams }>) => {
+      const registration = requireApp(request.params.id);
+      const body = tokenPreviewSchema.parse(request.body);
+      const user = store.users.getById(body.userId) ?? store.users.getByUpn(body.userId);
+      if (!user) throw notFound(`No user with id '${body.userId}'.`);
+      const preview = app.tokenService.previewToken({
+        app: registration,
+        user,
+        tokenType: body.tokenType,
+      });
+      const token =
+        body.tokenType === 'idToken'
+          ? await app.tokenService.mintIdToken(tenantId, preview.claims as IdTokenClaims)
+          : await app.tokenService.mintAccessToken(tenantId, preview.claims as AccessTokenClaims);
+      return {
+        tokenType: body.tokenType,
+        userId: user.id,
+        token,
+        claims: preview.claims,
+        unsupportedClaims: preview.unsupportedClaims,
+        groupOverage: preview.groupOverage,
+      };
+    },
+  );
 }

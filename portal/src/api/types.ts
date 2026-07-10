@@ -155,6 +155,11 @@ export interface TokenPreview {
   groupOverage: boolean;
 }
 
+/** Signed token generated for local development, with its decoded claims. */
+export interface GeneratedToken extends TokenPreview {
+  token: string;
+}
+
 /** A single field-level validation issue from the admin error envelope. */
 export interface AdminFieldIssue {
   field: string;
