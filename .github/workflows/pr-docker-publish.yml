@@ -170,6 +170,7 @@ jobs:
           if [ "$owner_type" = "Organization" ]; then
             base_url="/orgs/${GITHUB_REPOSITORY_OWNER}/packages/container/${package_name}"
           else
+            # Use the owner-qualified API; the workflow actor need not be the package owner.
             base_url="/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${package_name}"
           fi
 
