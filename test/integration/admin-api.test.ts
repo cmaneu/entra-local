@@ -469,28 +469,45 @@ describe('Admin API — token configuration', () => {
     expect((overage.json() as { groupOverage: boolean }).groupOverage).toBe(true);
   });
 
-  it('generates a signed token for a selected user and token type', async () => {
+  it('generates valid, expired, and incorrectly signed tokens for a selected user', async () => {
     ctx = await buildTestApp();
-    const res = await ctx.inject({
-      method: 'POST',
-      url: `/admin/api/apps/${SEED.appWebClientId}/token-generate`,
-      headers: JSON_HEADERS,
-      payload: { userId: SEED.userBobId, tokenType: 'idToken' },
-    });
-    expect(res.statusCode).toBe(200);
-    const body = res.json() as {
-      token: string;
-      tokenType: string;
-      claims: Record<string, unknown>;
-    };
+    async function generate(tokenVariant: 'valid' | 'expired' | 'invalidSignature') {
+      const res = await ctx.inject({
+        method: 'POST',
+        url: `/admin/api/apps/${SEED.appWebClientId}/token-generate`,
+        headers: JSON_HEADERS,
+        payload: { userId: SEED.userBobId, tokenType: 'idToken', tokenVariant },
+      });
+      expect(res.statusCode).toBe(200);
+      return res.json() as {
+        token: string;
+        tokenType: string;
+        tokenVariant: string;
+        claims: Record<string, unknown>;
+      };
+    }
+
+    const body = await generate('valid');
+    expect(body.tokenVariant).toBe('valid');
     expect(body.tokenType).toBe('idToken');
     expect(body.token.split('.')).toHaveLength(3);
     expect(decodeJwt(body.token)).toEqual(body.claims);
     const kid = decodeProtectedHeader(body.token).kid;
     expect(kid).toBeDefined();
-    await expect(
-      ctx.app.signing.getVerificationKey(kid!).then((key) => jwtVerify(body.token, key)),
-    ).resolves.toBeDefined();
+    const verificationKey = await ctx.app.signing.getVerificationKey(kid!);
+    await expect(jwtVerify(body.token, verificationKey)).resolves.toBeDefined();
     expect(body.claims.email).toBe('bob@entralocal.dev');
+
+    const expired = await generate('expired');
+    expect(expired.claims.exp).toBeLessThan(Math.floor(Date.now() / 1000));
+    await expect(jwtVerify(expired.token, verificationKey)).rejects.toMatchObject({
+      code: 'ERR_JWT_EXPIRED',
+    });
+
+    const invalidSignature = await generate('invalidSignature');
+    expect(decodeJwt(invalidSignature.token)).toEqual(invalidSignature.claims);
+    await expect(jwtVerify(invalidSignature.token, verificationKey)).rejects.toMatchObject({
+      code: 'ERR_JWS_SIGNATURE_VERIFICATION_FAILED',
+    });
   });
 });

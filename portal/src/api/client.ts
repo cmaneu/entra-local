@@ -16,6 +16,7 @@ import type {
   Paged,
   RedirectUri,
   SupportedClaims,
+  TokenVariant,
   TokenPreview,
   User,
 } from './types';
@@ -185,8 +186,10 @@ export const api = {
     request<App>('PATCH', `${ADMIN}/apps/${id}`, body),
   tokenPreview: (id: string, body: { userId: string; tokenType: OptionalClaimKind }) =>
     request<TokenPreview>('POST', `${ADMIN}/apps/${id}/token-preview`, body),
-  generateToken: (id: string, body: { userId: string; tokenType: OptionalClaimKind }) =>
-    request<GeneratedToken>('POST', `${ADMIN}/apps/${id}/token-generate`, body),
+  generateToken: (
+    id: string,
+    body: { userId: string; tokenType: OptionalClaimKind; tokenVariant: TokenVariant },
+  ) => request<GeneratedToken>('POST', `${ADMIN}/apps/${id}/token-generate`, body),
 };
 
 /** Patch body for an app's token configuration (optional claims + group claims). */

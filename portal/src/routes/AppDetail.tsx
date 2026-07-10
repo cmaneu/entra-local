@@ -12,6 +12,7 @@ import type {
   OptionalClaimKind,
   RedirectUri,
   SupportedClaims,
+  TokenVariant,
   User,
 } from '../api/types';
 import { useAsync } from '../hooks/useAsync';
@@ -943,11 +944,13 @@ function OptionalClaimEditor({
   );
 }
 
-/** Generate a signed token for a selected user and show its decoded claims. */
+/** Generate a token variant for a selected user and toggle between JWT and decoded claims. */
 function TokenGenerator({ app }: { app: App }): JSX.Element {
   const { announce } = useShell();
   const [userId, setUserId] = useState('');
   const [tokenType, setTokenType] = useState<OptionalClaimKind>('idToken');
+  const [tokenVariant, setTokenVariant] = useState<TokenVariant>('valid');
+  const [tokenView, setTokenView] = useState<'jwt' | 'decoded'>('jwt');
   const [generated, setGenerated] = useState<GeneratedToken | undefined>(undefined);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -961,8 +964,9 @@ function TokenGenerator({ app }: { app: App }): JSX.Element {
     setBusy(true);
     setError(undefined);
     try {
-      const result = await api.generateToken(app.id, { userId, tokenType });
+      const result = await api.generateToken(app.id, { userId, tokenType, tokenVariant });
       setGenerated(result);
+      setTokenView('jwt');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unexpected error.');
       setGenerated(undefined);
@@ -987,9 +991,9 @@ function TokenGenerator({ app }: { app: App }): JSX.Element {
         Generate token
       </h3>
       <p className="b-sm muted" style={{ margin: '0 0 12px' }}>
-        Generate a signed {tokenType === 'idToken' ? 'ID' : 'access'} token for local development,
-        applying this app registration's currently saved token configuration. Save configuration
-        changes before generating a token.
+        Generate a valid, expired, or incorrectly signed {tokenType === 'idToken' ? 'ID' : 'access'}{' '}
+        token for local development, applying this app registration's currently saved token
+        configuration. Save configuration changes before generating a token.
       </p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div className="field" style={{ margin: 0 }}>
@@ -1026,6 +1030,22 @@ function TokenGenerator({ app }: { app: App }): JSX.Element {
             <option value="accessToken">Access token</option>
           </Select>
         </div>
+        <div className="field" style={{ margin: 0 }}>
+          <label htmlFor="token-variant">Token condition</label>
+          <Select
+            id="token-variant"
+            value={tokenVariant}
+            style={{ width: 180 }}
+            onChange={(e) => {
+              setTokenVariant(e.target.value as TokenVariant);
+              setGenerated(undefined);
+            }}
+          >
+            <option value="valid">Valid</option>
+            <option value="expired">Expired</option>
+            <option value="invalidSignature">Incorrectly signed</option>
+          </Select>
+        </div>
         <Button onClick={() => void run()} busy={busy} disabled={!userId}>
           Generate token
         </Button>
@@ -1052,31 +1072,39 @@ function TokenGenerator({ app }: { app: App }): JSX.Element {
               <span className="mono">{generated.unsupportedClaims.join(', ')}</span>
             </Banner>
           )}
-          <h4 className="h-sm" style={{ margin: '16px 0 8px' }}>
-            Token
-          </h4>
-          <pre
-            className="code"
-            role="region"
-            aria-label="Generated token"
-            data-testid="generated-token"
-          >
-            <button type="button" className="cp" onClick={() => void copyToken()}>
-              {copied ? '✓ Copied' : '⧉ Copy'}
-            </button>
-            {generated.token}
-          </pre>
-          <h4 className="h-sm" style={{ margin: '16px 0 8px' }}>
-            Decoded claims
-          </h4>
-          <pre
-            className="code"
-            role="region"
-            aria-label="Decoded token claims"
-            data-testid="token-preview"
-          >
-            {JSON.stringify(generated.claims, null, 2)}
-          </pre>
+          <div style={{ marginTop: 16 }}>
+            <Tabs
+              tabs={[
+                { id: 'jwt', label: 'JWT' },
+                { id: 'decoded', label: 'Decoded token' },
+              ]}
+              active={tokenView}
+              onChange={setTokenView}
+              ariaLabel="Token output"
+            />
+            {tokenView === 'jwt' ? (
+              <pre
+                className="code"
+                role="region"
+                aria-label="Generated token"
+                data-testid="generated-token"
+              >
+                <button type="button" className="cp" onClick={() => void copyToken()}>
+                  {copied ? '✓ Copied' : '⧉ Copy'}
+                </button>
+                {generated.token}
+              </pre>
+            ) : (
+              <pre
+                className="code"
+                role="region"
+                aria-label="Decoded token claims"
+                data-testid="token-preview"
+              >
+                {JSON.stringify(generated.claims, null, 2)}
+              </pre>
+            )}
+          </div>
         </>
       )}
     </div>

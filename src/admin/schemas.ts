@@ -82,10 +82,15 @@ export const groupMembershipClaimsSchema = z.enum([
   'All',
 ]);
 
-/** Token preview/generation request: pick a user + token type. */
+/** Token preview request: pick a user + token type. */
 export const tokenPreviewSchema = z.object({
   userId: z.string().min(1),
   tokenType: z.enum(['idToken', 'accessToken']).default('idToken'),
+});
+
+/** Token generation request, including the local-development failure mode to simulate. */
+export const tokenGenerateSchema = tokenPreviewSchema.extend({
+  tokenVariant: z.enum(['valid', 'expired', 'invalidSignature']).default('valid'),
 });
 
 export const appCreateSchema = z.object({

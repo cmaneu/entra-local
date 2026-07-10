@@ -212,4 +212,4 @@ The same configuration is available over the Admin REST API (`/admin/api`):
 - `GET  /admin/api/token-configuration/supported-claims` — supported claims + group modes + default overage limit.
 - `PATCH /admin/api/apps/{id}` — set `optionalClaims`, `groupMembershipClaims`, `groupOverageLimit`.
 - `POST /admin/api/apps/{id}/token-preview` — body `{ "userId": "...", "tokenType": "idToken" | "accessToken" }`.
-- `POST /admin/api/apps/{id}/token-generate` — the same body; returns a signed local-development token and its decoded claims.
+- `POST /admin/api/apps/{id}/token-generate` — body `{ "userId": "...", "tokenType": "idToken" | "accessToken", "tokenVariant": "valid" | "expired" | "invalidSignature" }`; returns the local-development token and its decoded claims. `tokenVariant` defaults to `valid`.
