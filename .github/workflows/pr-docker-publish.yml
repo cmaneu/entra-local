@@ -175,8 +175,12 @@ jobs:
 
           # Delete package versions, not individual tags. The exact mutable tag finds the
           # latest image; the persistent prefix finds every earlier image for the PR.
+          jq_filter=".[] | select(any(
+            .metadata.container.tags[]?;
+            . == \"${pr_tag}\" or startswith(\"${pr_tag}-\")
+          )) | .id"
           version_ids=$(gh api --paginate "${base_url}/versions" \
-            --jq ".[] | select(any(.metadata.container.tags[]?; . == \"${pr_tag}\" or startswith(\"${pr_tag}-\"))) | .id")
+            --jq "$jq_filter")
 
           if [ -z "$version_ids" ]; then
             echo "No image versions found for tag ${pr_tag} — nothing to delete."

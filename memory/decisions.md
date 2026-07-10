@@ -401,7 +401,7 @@
 - **Date**: 2026-07-10
 - **Context**: Moving the mutable `dev-pr-{N}` tag to a new PR build left the previous package version reachable through its commit-SHA tag, and cleanup only ran for merged PRs.
 - **Decision**: Every PR publish also applies a persistent `dev-pr-{N}-{sha}` tag. The PR Docker workflow deletes the complete matching GHCR package versions (rather than deleting tags) when `/docker-unpublish` is commented or when the PR is closed, whether merged or abandoned. Cleanup matches both the mutable `dev-pr-{N}` tag and all persistent tags with the `dev-pr-{N}-` prefix.
-- **Rationale**: A persistent per-version marker preserves the PR association after the mutable tag moves, allowing all images built for that PR to be found and deleting every tag on each matching package version.
+- **Rationale**: A persistent per-version marker preserves the PR association after the mutable tag moves, allowing all images built for that PR to be found. Deleting each matching package version atomically removes the entire image version and all tags attached to it.
 - **Alternatives**: Delete only the current mutable tag (rejected because earlier SHA-tagged versions remain); infer versions from the PR's current commit list (rejected because force-pushed commits disappear from that list); remove images only after merge (rejected because abandoned PRs leak images).
 
 ### Portal cert-trust section + public cert-download API + "Entra Local emulator" cert OU
