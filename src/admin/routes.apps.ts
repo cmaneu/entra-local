@@ -22,6 +22,7 @@ import {
   scopeCreateSchema,
   scopePatchSchema,
   secretCreateSchema,
+  tokenGenerateSchema,
   tokenPreviewSchema,
 } from './schemas.js';
 import { GROUP_MEMBERSHIP_CLAIMS_VALUES } from '../store/types.js';
@@ -40,6 +41,14 @@ const SECONDS_PER_DAY = 86_400;
 /** Generate a high-entropy app secret (URL-safe). */
 function generateSecret(): string {
   return randomBytes(32).toString('base64url');
+}
+
+/** Corrupt a compact JWT signature while preserving its parseable header and payload. */
+function invalidateSignature(token: string): string {
+  const [header, payload, signature] = token.split('.');
+  if (!header || !payload || !signature) throw new Error('Minted token is not a compact JWT.');
+  const firstCharacter = signature.startsWith('A') ? 'B' : 'A';
+  return `${header}.${payload}.${firstCharacter}${signature.slice(1)}`;
 }
 
 /** Build the full App DTO including all sub-collections. */
@@ -300,7 +309,7 @@ export function registerAppRoutes(app: FastifyInstance): void {
     '/api/apps/:id/token-generate',
     async (request: FastifyRequest<{ Params: IdParams }>) => {
       const registration = requireApp(request.params.id);
-      const body = tokenPreviewSchema.parse(request.body);
+      const body = tokenGenerateSchema.parse(request.body);
       const user = store.users.getById(body.userId) ?? store.users.getByUpn(body.userId);
       if (!user) throw notFound(`No user with id '${body.userId}'.`);
       const preview = app.tokenService.previewToken({
@@ -308,15 +317,21 @@ export function registerAppRoutes(app: FastifyInstance): void {
         user,
         tokenType: body.tokenType,
       });
-      const token =
+      const claims =
+        body.tokenVariant === 'expired'
+          ? { ...preview.claims, exp: Math.floor(Date.now() / 1000) - 60 }
+          : preview.claims;
+      const signedToken =
         body.tokenType === 'idToken'
-          ? await app.tokenService.mintIdToken(tenantId, preview.claims as IdTokenClaims)
-          : await app.tokenService.mintAccessToken(tenantId, preview.claims as AccessTokenClaims);
+          ? await app.tokenService.mintIdToken(tenantId, claims as IdTokenClaims)
+          : await app.tokenService.mintAccessToken(tenantId, claims as AccessTokenClaims);
       return {
         tokenType: body.tokenType,
+        tokenVariant: body.tokenVariant,
         userId: user.id,
-        token,
-        claims: preview.claims,
+        token:
+          body.tokenVariant === 'invalidSignature' ? invalidateSignature(signedToken) : signedToken,
+        claims,
         unsupportedClaims: preview.unsupportedClaims,
         groupOverage: preview.groupOverage,
       };

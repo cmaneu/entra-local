@@ -211,8 +211,9 @@ describe('AppDetail — token configuration', () => {
 
   it('generates and copies a token for a selected user', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
+    const generatedBodies: unknown[] = [];
     Object.assign(navigator, { clipboard: { writeText } });
-    installFetch(({ method, path }) => {
+    installFetch(({ method, path, body }) => {
       if (method === 'GET' && path === `/admin/api/apps/${APP_ID}`) return { body: app() };
       if (method === 'GET' && path === '/admin/api/token-configuration/supported-claims') {
         return { body: supported };
@@ -240,9 +241,11 @@ describe('AppDetail — token configuration', () => {
         };
       }
       if (method === 'POST' && path === `/admin/api/apps/${APP_ID}/token-generate`) {
+        generatedBodies.push(body);
         return {
           body: {
             tokenType: 'idToken',
+            tokenVariant: 'invalidSignature',
             userId: 'u-alice',
             token: 'header.payload.signature',
             claims: { email: 'alice@entralocal.dev', groups: ['g1', 'g2'] },
@@ -259,14 +262,22 @@ describe('AppDetail — token configuration', () => {
     await screen.findByRole('heading', { name: 'Generate token' });
     await screen.findByRole('option', { name: /Alice Example/ });
     await userEvent.selectOptions(screen.getByLabelText('User'), 'u-alice');
+    await userEvent.selectOptions(screen.getByLabelText('Token condition'), 'invalidSignature');
     await userEvent.click(screen.getByRole('button', { name: 'Generate token' }));
 
+    expect(generatedBodies).toEqual([
+      { userId: 'u-alice', tokenType: 'idToken', tokenVariant: 'invalidSignature' },
+    ]);
     expect(await screen.findByTestId('generated-token')).toHaveTextContent(
       'header.payload.signature',
     );
+    expect(screen.queryByTestId('token-preview')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: 'Decoded token' }));
     const preview = await screen.findByTestId('token-preview');
     expect(preview.textContent).toContain('alice@entralocal.dev');
     expect(preview.textContent).toContain('groups');
+    expect(screen.queryByTestId('generated-token')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: 'JWT' }));
     await userEvent.click(screen.getByRole('button', { name: '⧉ Copy' }));
     expect(writeText).toHaveBeenCalledWith('header.payload.signature');
   });

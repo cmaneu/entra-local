@@ -130,6 +130,9 @@ export interface OptionalClaimsConfig {
 /** Which token collection an optional-claim set applies to. */
 export type OptionalClaimKind = 'idToken' | 'accessToken';
 
+/** Local-development token condition to generate. */
+export type TokenVariant = 'valid' | 'expired' | 'invalidSignature';
+
 /** Group-membership claim modes an app can be configured with. */
 export type GroupMembershipClaims =
   | 'None'
@@ -158,6 +161,7 @@ export interface TokenPreview {
 /** Signed token generated for local development, with its decoded claims. */
 export interface GeneratedToken extends TokenPreview {
   token: string;
+  tokenVariant: TokenVariant;
 }
 
 /** A single field-level validation issue from the admin error envelope. */
