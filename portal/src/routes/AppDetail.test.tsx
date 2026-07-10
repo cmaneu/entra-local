@@ -51,6 +51,13 @@ describe('AppDetail — sections', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Authentication' }));
     expect(await screen.findByText('Redirect URIs')).toBeInTheDocument();
     expect(screen.queryByText('Display name')).not.toBeInTheDocument();
+
+    // Arrow-key navigation moves selection (and focus) down the rail.
+    await userEvent.keyboard('{ArrowDown}');
+    const secretsTab = screen.getByRole('tab', { name: 'Certificates & secrets' });
+    expect(secretsTab).toHaveAttribute('aria-selected', 'true');
+    expect(secretsTab).toHaveFocus();
+    expect(await screen.findByText('Client secrets')).toBeInTheDocument();
   });
 });
 
