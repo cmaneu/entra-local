@@ -6,18 +6,19 @@ import type {
   AppRole,
   AppScope,
   CreatedSecret,
+  GeneratedToken,
   GroupMembershipClaims,
   OptionalClaim,
   OptionalClaimKind,
   RedirectUri,
   SupportedClaims,
-  TokenPreview,
   User,
 } from '../api/types';
 import { useAsync } from '../hooks/useAsync';
 import { useShell } from '../hooks/useToast';
 import { useEmulator } from '../components/EmulatorContext';
 import { browserSnippet, deriveGraphBase, nodeSnippet, snippetValues } from '../lib/msalSnippet';
+import { copyText } from '../lib/format';
 import { Banner } from '../components/Banner';
 import { Button } from '../components/Button';
 import { CodeBlock } from '../components/CodeBlock';
@@ -857,7 +858,7 @@ function TokenConfigCard({ app, onSaved }: { app: App; onSaved: () => void }): J
         </div>
       )}
 
-      <TokenPreviewPanel app={app} />
+      <TokenGenerator app={app} />
     </section>
   );
 }
@@ -942,11 +943,13 @@ function OptionalClaimEditor({
   );
 }
 
-/** Decoded token preview for a selected user + token type; provably matches the issued token. */
-function TokenPreviewPanel({ app }: { app: App }): JSX.Element {
+/** Generate a signed token for a selected user and show its decoded claims. */
+function TokenGenerator({ app }: { app: App }): JSX.Element {
+  const { announce } = useShell();
   const [userId, setUserId] = useState('');
   const [tokenType, setTokenType] = useState<OptionalClaimKind>('idToken');
-  const [preview, setPreview] = useState<TokenPreview | undefined>(undefined);
+  const [generated, setGenerated] = useState<GeneratedToken | undefined>(undefined);
+  const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
 
@@ -958,14 +961,21 @@ function TokenPreviewPanel({ app }: { app: App }): JSX.Element {
     setBusy(true);
     setError(undefined);
     try {
-      const result = await api.tokenPreview(app.id, { userId, tokenType });
-      setPreview(result);
+      const result = await api.generateToken(app.id, { userId, tokenType });
+      setGenerated(result);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Unexpected error.');
-      setPreview(undefined);
+      setGenerated(undefined);
     } finally {
       setBusy(false);
     }
+  }
+
+  async function copyToken(): Promise<void> {
+    if (!generated || !(await copyText(generated.token))) return;
+    setCopied(true);
+    announce('Token copied');
+    window.setTimeout(() => setCopied(false), 1500);
   }
 
   return (
@@ -974,12 +984,12 @@ function TokenPreviewPanel({ app }: { app: App }): JSX.Element {
       style={{ marginTop: 20, borderTop: '1px solid var(--line)', paddingTop: 16 }}
     >
       <h3 className="h-sm" style={{ margin: '0 0 8px' }}>
-        Token preview
+        Generate token
       </h3>
       <p className="b-sm muted" style={{ margin: '0 0 12px' }}>
-        Previews the decoded {tokenType === 'idToken' ? 'ID' : 'access'} token this app would issue
-        for the selected user, applying this app registration's currently saved token configuration.
-        To preview unsaved changes, save your token configuration first.
+        Generate a signed {tokenType === 'idToken' ? 'ID' : 'access'} token for local development,
+        applying this app registration's currently saved token configuration. Save configuration
+        changes before generating a token.
       </p>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div className="field" style={{ margin: 0 }}>
@@ -988,7 +998,10 @@ function TokenPreviewPanel({ app }: { app: App }): JSX.Element {
             id="preview-user"
             value={userId}
             style={{ width: 240 }}
-            onChange={(e) => setUserId(e.target.value)}
+            onChange={(e) => {
+              setUserId(e.target.value);
+              setGenerated(undefined);
+            }}
           >
             <option value="">Select a user…</option>
             {userList.map((u) => (
@@ -1004,14 +1017,17 @@ function TokenPreviewPanel({ app }: { app: App }): JSX.Element {
             id="preview-type"
             value={tokenType}
             style={{ width: 160 }}
-            onChange={(e) => setTokenType(e.target.value as OptionalClaimKind)}
+            onChange={(e) => {
+              setTokenType(e.target.value as OptionalClaimKind);
+              setGenerated(undefined);
+            }}
           >
             <option value="idToken">ID token</option>
             <option value="accessToken">Access token</option>
           </Select>
         </div>
         <Button onClick={() => void run()} busy={busy} disabled={!userId}>
-          Preview
+          Generate token
         </Button>
       </div>
 
@@ -1021,28 +1037,45 @@ function TokenPreviewPanel({ app }: { app: App }): JSX.Element {
         </div>
       )}
 
-      {preview && (
+      {generated && (
         <>
-          {preview.groupOverage && (
+          {generated.groupOverage && (
             <Banner tone="caution" className="mt12">
               Group overage: too many groups for a <span className="mono">groups</span> array, so an
               overage claim was emitted. The app should call{' '}
               <span className="mono">/graph/v1.0/me/memberOf</span> to resolve full membership.
             </Banner>
           )}
-          {preview.unsupportedClaims.length > 0 && (
+          {generated.unsupportedClaims.length > 0 && (
             <Banner tone="caution" className="mt12">
               Unsupported claims (preserved but not emitted):{' '}
-              <span className="mono">{preview.unsupportedClaims.join(', ')}</span>
+              <span className="mono">{generated.unsupportedClaims.join(', ')}</span>
             </Banner>
           )}
+          <h4 className="h-sm" style={{ margin: '16px 0 8px' }}>
+            Token
+          </h4>
           <pre
             className="code"
             role="region"
-            aria-label="Decoded token preview"
+            aria-label="Generated token"
+            data-testid="generated-token"
+          >
+            <button type="button" className="cp" onClick={() => void copyToken()}>
+              {copied ? '✓ Copied' : '⧉ Copy'}
+            </button>
+            {generated.token}
+          </pre>
+          <h4 className="h-sm" style={{ margin: '16px 0 8px' }}>
+            Decoded claims
+          </h4>
+          <pre
+            className="code"
+            role="region"
+            aria-label="Decoded token claims"
             data-testid="token-preview"
           >
-            {JSON.stringify(preview.claims, null, 2)}
+            {JSON.stringify(generated.claims, null, 2)}
           </pre>
         </>
       )}

@@ -1,3 +1,4 @@
+import { decodeJwt, decodeProtectedHeader, jwtVerify } from 'jose';
 import { afterEach, describe, expect, it } from 'vitest';
 import { verifySecret } from '../../src/store/hashing.js';
 import { SEED } from '../../src/store/seed.js';
@@ -466,5 +467,30 @@ describe('Admin API — token configuration', () => {
       payload: { userId: SEED.userAliceId, tokenType: 'idToken' },
     });
     expect((overage.json() as { groupOverage: boolean }).groupOverage).toBe(true);
+  });
+
+  it('generates a signed token for a selected user and token type', async () => {
+    ctx = await buildTestApp();
+    const res = await ctx.inject({
+      method: 'POST',
+      url: `/admin/api/apps/${SEED.appWebClientId}/token-generate`,
+      headers: JSON_HEADERS,
+      payload: { userId: SEED.userBobId, tokenType: 'idToken' },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      token: string;
+      tokenType: string;
+      claims: Record<string, unknown>;
+    };
+    expect(body.tokenType).toBe('idToken');
+    expect(body.token.split('.')).toHaveLength(3);
+    expect(decodeJwt(body.token)).toEqual(body.claims);
+    const kid = decodeProtectedHeader(body.token).kid;
+    expect(kid).toBeDefined();
+    await expect(
+      ctx.app.signing.getVerificationKey(kid!).then((key) => jwtVerify(body.token, key)),
+    ).resolves.toBeDefined();
+    expect(body.claims.email).toBe('bob@entralocal.dev');
   });
 });

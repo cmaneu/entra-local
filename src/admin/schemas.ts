@@ -82,7 +82,7 @@ export const groupMembershipClaimsSchema = z.enum([
   'All',
 ]);
 
-/** Token-preview request: pick a user + token type (and optional resource app for access tokens). */
+/** Token preview/generation request: pick a user + token type. */
 export const tokenPreviewSchema = z.object({
   userId: z.string().min(1),
   tokenType: z.enum(['idToken', 'accessToken']).default('idToken'),
