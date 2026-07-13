@@ -37,7 +37,7 @@ the same protocols, so your MSAL-based app works against it with only configurat
 - 🔐 **MSAL-compatible OIDC/OAuth2 endpoints** — discovery, JWKS, authorize, token,
   device code, logout, userinfo.
 - 🎫 **Supported flows** — Authorization Code + PKCE, Client Credentials, Refresh Token,
-  Device Code.
+  Device Code, and On-Behalf-Of.
 - 🪪 **Real RS256-signed JWTs** — ID and access tokens validatable against a working JWKS
   endpoint.
 - 👥 **Minimal Microsoft Graph** — read `/me`, `/users`, `/groups`.
@@ -62,6 +62,7 @@ surface MSAL needs for the most common developer scenarios. Treat anything not l
 - **Daemon / service** — Client Credentials (app-only token with app roles).
 - **CLI / device** — Device Code flow (RFC 8628).
 - **Token refresh** — rotating refresh tokens.
+- **Middle-tier APIs** — delegated On-Behalf-Of exchange to Graph or a registered downstream API.
 - **Protected API + minimal Graph** — call `/me`, `/users`, `/groups` with the access token.
 
 **Protocol surface**
@@ -76,7 +77,7 @@ surface MSAL needs for the most common developer scenarios. Treat anything not l
 
 - Multiple / real directories — a **single fixed tenant** only.
 - Implicit flow and ROPC (resource-owner password grant).
-- On-Behalf-Of (OBO), SAML 2.0, and WS-Federation.
+- SAML 2.0 and WS-Federation.
 - MFA, Conditional Access, Identity Protection, and consent prompts (apps are **auto-consented**).
 - Certificate / `private_key_jwt` client authentication (client **secrets** only).
 - Full Microsoft Graph (writes and most resources) and advanced claims/token policies.
@@ -423,7 +424,7 @@ Authorization Code + PKCE sign-in, Client Credentials, Refresh Token, **Device C
 run targets (`npm start`, Docker, and the single-file binary). Remaining work tracked in the
 [roadmap](specs/roadmap.md): optional password-login enforcement, MSAL sample apps
 (JS / React / Node CLI / .NET / Python), and a public developer-documentation pass.
-Multi-tenant, OBO, broader Graph, and certificate-based client auth remain deferred.
+Multi-tenant, broader Graph, and certificate-based client auth remain deferred.
 
 ## Security & limitations
 
@@ -453,6 +454,9 @@ It ships a deterministic, fixed-GUID seed directory so flows are reproducible in
 - A public SPA app (`cccccccc-…-0001`, redirect `https://localhost:3000`, scope `access_as_user`)
   and a confidential daemon app (`cccccccc-…-0002`, app role `Tasks.Read.All`) whose client secret
   is the known dev value `daemon-app-secret`.
+- The OBO sample's public SPA (`cccccccc-…-0008`, redirect `http://localhost:5174`) and confidential
+  middle-tier API (`cccccccc-…-0009`, scope `access_as_user`) with known dev secret
+  `obo-middle-tier-secret`.
 
 These credentials are **intentionally public and dev-only**. Passwords and app secrets are stored
 hashed (scrypt) at rest, and refresh tokens and device codes are stored hashed (SHA-256) — but

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Entra Local · OBO relay</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="badge">LOCAL EMULATOR</span>
+        <p class="eyebrow">THREE-TIER DELEGATION LAB</p>
+        <h1>Identity,<br /><em>relayed.</em></h1>
+        <p class="lede">
+          A browser token enters the middle tier. A Graph token leaves it. The user stays the same.
+        </p>
+      </header>
+      <ol class="flow" aria-label="On-behalf-of flow">
+        <li><b>01</b><span>Browser SPA</span><code>…0008</code></li>
+        <li><b>02</b><span>Middle-tier API</span><code>…0009</code></li>
+        <li><b>03</b><span>Local Graph</span><code>/me</code></li>
+      </ol>
+      <section class="console">
+        <div class="actions">
+          <button id="signin" data-testid="signin">Sign in</button>
+          <button id="call-api" data-testid="call-api" disabled>Call Graph via OBO</button>
+        </div>
+        <p id="status" data-testid="status">Sign in to begin.</p>
+      </section>
+      <section id="result-card" class="result" hidden>
+        <p class="eyebrow">SAFE CLAIM SUMMARY + GRAPH RESPONSE</p>
+        <pre id="result" data-testid="result"></pre>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

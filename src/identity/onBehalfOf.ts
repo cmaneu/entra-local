@@ -66,27 +66,29 @@ export async function handleOnBehalfOfGrant(
   }
 
   const scopes = splitScopes(scope);
-  const invalidGrantScope = scopes.find(
-    (value) =>
-      OIDC_SCOPES.has(value) ||
-      value === '.default' ||
-      value.toLowerCase().endsWith('/.default'),
+  // MSAL Node appends its protocol-default OIDC scopes to OBO requests. They are not downstream
+  // permissions and are never issued; tolerate and remove them so the real client interoperates.
+  const resourceScopes = scopes.filter((value) => !OIDC_SCOPES.has(value));
+  const invalidGrantScope = resourceScopes.find(
+    (value) => value === '.default' || value.toLowerCase().endsWith('/.default'),
   );
   if (
-    scopes.length === 0 ||
+    resourceScopes.length === 0 ||
     invalidGrantScope !== undefined ||
-    !scopesAreValid(scopes, ctx.store, ctx.config)
+    !scopesAreValid(resourceScopes, ctx.store, ctx.config)
   ) {
     sendOAuthError(reply, {
       error: 'invalid_scope',
       description:
-        'OBO scope must contain enabled delegated API scopes and cannot contain OIDC, offline_access, or .default scopes.',
+        'OBO scope must contain enabled delegated API scopes for one resource and cannot use .default.',
       correlationId,
     });
     return;
   }
 
-  const resources = new Set(scopes.map((value) => scopeResource(value, ctx.config.graphResourceId)));
+  const resources = new Set(
+    resourceScopes.map((value) => scopeResource(value, ctx.config.graphResourceId)),
+  );
   if (resources.size !== 1) {
     sendOAuthError(reply, {
       error: 'invalid_scope',
@@ -142,12 +144,12 @@ export async function handleOnBehalfOfGrant(
   const tokenResponse = await ctx.tokenService.buildTokenResponse({
     app,
     user,
-    scopes,
+    scopes: resourceScopes,
     resource,
     grant: 'on_behalf_of',
     ipAddress: request.ip,
   });
-  tokenResponse.scope = scopes.join(' ');
+  tokenResponse.scope = resourceScopes.join(' ');
 
   void reply
     .code(200)

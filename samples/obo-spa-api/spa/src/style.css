@@ -1,0 +1,26 @@
+:root { font-family: "Segoe UI", sans-serif; color: #201f1e; background: #faf9f8; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background-image: linear-gradient(#e1dfdd 1px, transparent 1px), linear-gradient(90deg, #e1dfdd 1px, transparent 1px); background-size: 48px 48px; }
+main { width: min(1060px, calc(100% - 40px)); margin: 0 auto; padding: 56px 0 80px; }
+header { max-width: 760px; }
+.badge { display: inline-block; padding: 7px 10px; color: #92400e; background: #fef3c7; border: 1px solid #f59e0b; font-size: 11px; font-weight: 600; letter-spacing: .08em; }
+.eyebrow { color: #605e5c; font-size: 11px; font-weight: 600; letter-spacing: .14em; margin: 28px 0 12px; }
+h1 { margin: 0; font-size: clamp(64px, 11vw, 132px); line-height: .78; letter-spacing: -.07em; font-weight: 650; }
+h1 em { color: #0078d4; font-style: normal; }
+.lede { max-width: 560px; margin: 36px 0 56px; font-size: 20px; line-height: 1.55; }
+.flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; padding: 1px; background: #c8c6c4; list-style: none; }
+.flow li { min-height: 150px; padding: 22px; background: #fff; display: flex; flex-direction: column; justify-content: space-between; }
+.flow b { color: #0078d4; font: 600 12px/1 "Cascadia Mono", monospace; }
+.flow span { font-size: 18px; font-weight: 600; }
+code, pre { font-family: "Cascadia Mono", monospace; }
+.flow code { color: #605e5c; font-size: 12px; }
+.console, .result { margin-top: 24px; padding: 24px; color: #fff; background: #201f1e; box-shadow: 12px 12px 0 #0078d4; }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; }
+button { border: 0; padding: 12px 18px; color: #fff; background: #0078d4; font: 600 14px "Segoe UI", sans-serif; cursor: pointer; }
+button:hover { background: #106ebe; }
+button:disabled { color: #8a8886; background: #323130; cursor: not-allowed; }
+.console p { margin: 18px 0 0; color: #c8c6c4; }
+.result .eyebrow { color: #8a8886; margin-top: 0; }
+pre { overflow: auto; margin: 0; color: #dff6dd; font-size: 12px; line-height: 1.6; }
+@media (max-width: 680px) { .flow { grid-template-columns: 1fr; } h1 { font-size: 68px; } }
+@media (prefers-reduced-motion: no-preference) { header, .flow, .console { animation: rise .55s both; } .flow { animation-delay: .08s; } .console { animation-delay: .16s; } @keyframes rise { from { opacity: 0; transform: translateY(16px); } } }
