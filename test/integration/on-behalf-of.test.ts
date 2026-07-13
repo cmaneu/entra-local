@@ -40,10 +40,7 @@ async function assertion(
   ).access_token;
 }
 
-async function exchange(
-  overrides: Record<string, string> = {},
-  requestAssertion?: string,
-) {
+async function exchange(overrides: Record<string, string> = {}, requestAssertion?: string) {
   return ctx.inject({
     method: 'POST',
     url: TOKEN_PATH,
@@ -119,9 +116,7 @@ describe('on-behalf-of token exchange', () => {
       scope: `api://${SEED.appTokenApiId}/${SEED.tokenApiScopeValue}`,
     });
     expect(response.statusCode).toBe(200);
-    const claims = await verifiedClaims(
-      (response.json() as { access_token: string }).access_token,
-    );
+    const claims = await verifiedClaims((response.json() as { access_token: string }).access_token);
     expect(claims).toMatchObject({
       aud: SEED.appTokenApiId,
       oid: SEED.userBobId,
