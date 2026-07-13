@@ -31,8 +31,11 @@ const msal = new ConfidentialClientApplication({
 });
 
 function bearer(header: string | undefined): string | undefined {
-  const match = /^Bearer\s+(.+)$/i.exec(header ?? '');
-  return match?.[1]?.trim();
+  if (!header) return undefined;
+  const separator = header.indexOf(' ');
+  if (separator < 0 || header.slice(0, separator).toLowerCase() !== 'bearer') return undefined;
+  const token = header.slice(separator + 1).trim();
+  return token || undefined;
 }
 
 async function authenticate(req: AuthedRequest, res: express.Response, next: express.NextFunction) {
