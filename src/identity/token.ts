@@ -8,6 +8,7 @@ import type { TokenService } from '../tokens/service.js';
 import { authenticateClient, field, type Body } from './clientAuth.js';
 import { autoGrantedRoles, resolveClientCredentialScope } from './clientCredentials.js';
 import { DEVICE_CODE_GRANT, handleDeviceCodeGrant } from './deviceCode.js';
+import { handleOnBehalfOfGrant, JWT_BEARER_GRANT } from './onBehalfOf.js';
 import { sendOAuthError } from './oauthErrors.js';
 
 /**
@@ -29,7 +30,7 @@ export interface TokenContext {
 }
 
 /** Resolve the request correlation id (echoed into AADSTS-style error bodies). */
-function correlationId(request: FastifyRequest): string {
+export function correlationId(request: FastifyRequest): string {
   const header = request.headers['client-request-id'] ?? request.headers['x-request-id'];
   return typeof header === 'string' ? header : String(request.id);
 }
@@ -315,6 +316,8 @@ const GRANT_HANDLERS: Record<string, GrantHandler> = {
   authorization_code: handleAuthorizationCode,
   refresh_token: handleRefreshToken,
   client_credentials: handleClientCredentials,
+  [JWT_BEARER_GRANT]: (request, reply, ctx, body) =>
+    handleOnBehalfOfGrant(request, reply, ctx, body, correlationId(request)),
   // RFC 8628 mandates (and discovery advertises) the URN grant key. `@azure/msal-node`
   // (GrantType.DEVICE_CODE_GRANT) polls with the bare `device_code` value, so we accept both
   // aliases — they dispatch to the same handler — to interoperate with the real MSAL client.

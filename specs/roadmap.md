@@ -107,6 +107,8 @@ other sample specs reference.
 | 20 | .NET sample (MSAL.NET) | Console Auth Code sample (`dotnet run`); reuses the .NET toolchain/CI provisioned in #13 | – | 6, 13 | ⬜ |
 | 21 | Python sample (MSAL Python) | Console Auth Code sample (`uv run`); reuses the Python toolchain/CI provisioned in #13 | – | 6, 13 | ⬜ |
 | 24 | Full-stack SPA + protected API | JS SPA (`msal-browser`) calling a Node/**Express** resource API, **one app registration per tier** (front SPA app + back API app exposing a scope); the API validates the access token (JWKS/`iss`/`aud`/`scp`). Adds two fixed-GUID **seed** apps; no protocol change | ✓ | 3, 6, 7, 13, 18 | ✅ |
+| 27 | On-Behalf-Of flow | JWT bearer exchange for delegated middle-tier calls to Graph or registered downstream APIs; real `msal-node` compatibility | – | 5, 8, 13 | ✅ |
+| 28 | OBO SPA/API sample | Three-tier `msal-browser` SPA → confidential Express API → local Graph `/me` sample with Playwright smoke | ✓ | 24, 27 | ✅ |
 
 ## Iteration 4 — Public developer documentation
 **Outcome:** published, developer-facing documentation so external developers can adopt the
@@ -122,7 +124,6 @@ assume Iterations 1-2 are ✅ (every documented endpoint and config option exist
 | Feature | Rationale |
 |---------|-----------|
 | Multi-tenant directories | Single tenant covers MVP value; multi-tenant is a large surface-area increase (`tid` routing, isolation) |
-| On-Behalf-Of (OBO) flow | Niche multi-tier API scenario; not needed to prove core value |
 | Broader Graph (writes, app roles, directory objects) | Read surface (`/me`, `/users`, `/groups`) covers the common post-sign-in case |
 | Certificate-based client auth (`private_key_jwt`) | Client-secret auth is sufficient for MVP |
 | Signing-key rotation UI | Keys are persisted/stable; manual rotation is a polish feature |

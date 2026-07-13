@@ -50,6 +50,7 @@ describe('OIDC discovery document shape (criterion 1)', () => {
         'authorization_code',
         'refresh_token',
         'client_credentials',
+        'urn:ietf:params:oauth:grant-type:jwt-bearer',
         'urn:ietf:params:oauth:grant-type:device_code',
       ],
       subject_types_supported: ['pairwise'],

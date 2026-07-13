@@ -27,7 +27,8 @@ export type GrantType =
   | 'authorization_code'
   | 'refresh_token'
   | 'client_credentials'
-  | 'device_code';
+  | 'device_code'
+  | 'on_behalf_of';
 
 /** The standard OAuth token-endpoint success JSON. */
 export interface TokenResponse {

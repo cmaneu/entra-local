@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -223,6 +226,76 @@ jobs:
       - name: Tear down background services
         if: always()
         run: kill "$EMULATOR_PID" 2>/dev/null || true
+
+  # OBO sample (#28): real msal-browser sign-in → confidential Express API → real
+  # msal-node acquireTokenOnBehalfOf → local Graph /me.
+  obo-sample:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Build emulator
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Start freshly seeded emulator
+        env:
+          PUBLIC_ORIGIN: https://localhost:8443
+        run: |
+          nohup pnpm start > emulator.log 2>&1 &
+          echo "EMULATOR_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 30); do
+            curl -ksS https://localhost:8443/health | grep -q '"status":"ok"' && exit 0
+            sleep 2
+          done
+          cat emulator.log; exit 1
+
+      - name: Install and build standalone OBO sample
+        working-directory: samples/obo-spa-api
+        run: |
+          npm ci
+          npm run build
+          test -f README.md
+
+      - name: Start OBO API and SPA
+        working-directory: samples/obo-spa-api
+        env:
+          NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/data/tls/cert.pem
+        run: |
+          nohup npm run start -w api > api.log 2>&1 &
+          echo "API_PID=$!" >> "$GITHUB_ENV"
+          nohup npm run preview -w spa > spa.log 2>&1 &
+          echo "SPA_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 30); do
+            if curl -sS http://localhost:4001/health | grep -q '"status":"ok"' &&
+               curl -sS http://localhost:5174/ | grep -q '<title>'; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat api.log spa.log; exit 1
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run complete OBO sample smoke
+        env:
+          NODE_EXTRA_CA_CERTS: ${{ github.workspace }}/data/tls/cert.pem
+        run: node samples/obo-spa-api/smoke.mjs
+
+      - name: Tear down background services
+        if: always()
+        run: kill "$EMULATOR_PID" "$API_PID" "$SPA_PID" 2>/dev/null || true
 
   # Run-targets (#14): prove the hardened image actually builds, runs as the published port is
   # reachable from the HOST (HOST=0.0.0.0), the HEALTHCHECK goes healthy, env passthrough works,
