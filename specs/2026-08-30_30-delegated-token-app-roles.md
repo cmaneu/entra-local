@@ -7,7 +7,7 @@
 - **Dependencies:** [#5](2026-06-22_05-token-service.md) (token service / claim assembly),
   [#8](2026-06-22_08-client-credentials.md) (app-role auto-grant model), [#6](2026-06-22_06-auth-code-pkce-signin.md)
   (delegated auth-code issuance).
-- **Status:** ⬜ Not started.
+- **Status:** Implemented — [PR #31](https://github.com/cmaneu/entra-local/pull/31) open for review.
 
 ---
 
@@ -99,6 +99,17 @@ Identical mechanics to the app-only auto-grant (`autoGrantedRoles` in
 
 No per-user filtering: every signed-in user receives every matching role on the resource app.
 
+### Resolution examples
+
+| Scenario | Resolved resource app | Matching enabled `User`-typed roles | `roles` |
+|---|---|---|---|
+| Sign-in with no resource scope requested | none (audience = Graph) | n/a | `[]` |
+| Resource is a registered API with one enabled `User`-typed role | the API app | 1 | `[<value>]` |
+| Resource is a registered API with a role scoped `allowedMemberTypes: Application` only | the API app | 0 (wrong member type) | `[]` |
+| Resource is a registered API with a disabled `User`-typed role | the API app | 0 (disabled) | `[]` |
+| Resource is a registered API with a role scoped `allowedMemberTypes: Application,User` | the API app | 1 | `[<value>]` |
+| Refresh-token redemption for the same app/user/resource | same as original sign-in | same as original sign-in | unchanged |
+
 ---
 
 ## Implementation approach
@@ -175,3 +186,11 @@ site in `src/identity/token.ts` unchanged.
 - Issue [#30](https://github.com/cmaneu/entra-local/issues/30) was filed to satisfy `CONTRIBUTING.md`'s
   "open an issue before you open a pull request" gate; implementation on this branch preceded the
   issue filing at the requester's explicit direction.
+- **Behavior change to flag for review:** delegated access tokens previously omitted `roles`
+  entirely (`AccessTokenClaims.roles` was `undefined`). After this change every delegated access
+  token carries `roles` as an array, at minimum `[]`. No existing test asserted the claim's
+  absence as a security boundary (the one assertion that checked `roles` was `undefined` was a
+  descriptive regression check, updated alongside this change), but any external consumer that
+  specifically branches on `roles` being absent (rather than empty) would observe different
+  behavior.
+
