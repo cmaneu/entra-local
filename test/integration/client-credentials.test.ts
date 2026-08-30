@@ -270,23 +270,45 @@ describe('scope validation (criterion 5)', () => {
     expect((res.json() as CcBody).error).toBe('invalid_scope');
   });
 
-  it('rejects .default combined with openid with invalid_scope', async () => {
+  it('accepts .default combined with the OIDC scopes MSAL always sends', async () => {
     ctx = await buildTestApp();
     const res = await token(ctx, {
       client_id: DAEMON,
       client_secret: SEED.daemonSecret,
-      scope: `openid ${DAEMON_DEFAULT}`,
+      scope: `openid profile offline_access ${DAEMON_DEFAULT}`,
     });
-    expect(res.statusCode).toBe(400);
-    expect((res.json() as CcBody).error).toBe('invalid_scope');
+    expect(res.statusCode).toBe(200);
+    expect((res.json() as CcBody).token_type).toBe('Bearer');
   });
 
-  it('rejects .default combined with offline_access with invalid_scope', async () => {
+  it('accepts .default combined with offline_access alone', async () => {
     ctx = await buildTestApp();
     const res = await token(ctx, {
       client_id: DAEMON,
       client_secret: SEED.daemonSecret,
       scope: `${DAEMON_DEFAULT} offline_access`,
+    });
+    expect(res.statusCode).toBe(200);
+    expect((res.json() as CcBody).token_type).toBe('Bearer');
+  });
+
+  it('rejects OIDC scopes with no resource scope as invalid_scope', async () => {
+    ctx = await buildTestApp();
+    const res = await token(ctx, {
+      client_id: DAEMON,
+      client_secret: SEED.daemonSecret,
+      scope: 'openid profile',
+    });
+    expect(res.statusCode).toBe(400);
+    expect((res.json() as CcBody).error).toBe('invalid_scope');
+  });
+
+  it('rejects multiple non-OIDC resource scopes as invalid_scope', async () => {
+    ctx = await buildTestApp();
+    const res = await token(ctx, {
+      client_id: DAEMON,
+      client_secret: SEED.daemonSecret,
+      scope: `${DAEMON_DEFAULT} ${GRAPH_DEFAULT}`,
     });
     expect(res.statusCode).toBe(400);
     expect((res.json() as CcBody).error).toBe('invalid_scope');

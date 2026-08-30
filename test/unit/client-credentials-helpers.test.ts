@@ -69,11 +69,37 @@ describe('resolveClientCredentialScope', () => {
     });
   });
 
-  it('rejects multiple scopes (OIDC mixed in) as invalid_scope', () => {
+  it('ignores OIDC scopes mixed in by MSAL and resolves the .default scope', () => {
+    ts = buildTestStore();
+    ts.store.seed();
+    const r = resolveClientCredentialScope(
+      `openid profile offline_access ${DAEMON_URI}/.default`,
+      CONFIG,
+      ts.store,
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.resolved.aud).toBe(DAEMON_URI);
+    }
+  });
+
+  it('rejects OIDC scopes with no resource scope as invalid_scope', () => {
+    ts = buildTestStore();
+    expect(resolveClientCredentialScope('openid profile', CONFIG, ts.store)).toMatchObject({
+      ok: false,
+      error: 'invalid_scope',
+    });
+  });
+
+  it('rejects multiple non-OIDC scopes as invalid_scope', () => {
     ts = buildTestStore();
     ts.store.seed();
     expect(
-      resolveClientCredentialScope(`openid ${DAEMON_URI}/.default`, CONFIG, ts.store),
+      resolveClientCredentialScope(
+        `${DAEMON_URI}/.default openid ${DAEMON}/.default`,
+        CONFIG,
+        ts.store,
+      ),
     ).toMatchObject({ ok: false, error: 'invalid_scope' });
   });
 

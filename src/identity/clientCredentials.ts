@@ -1,4 +1,5 @@
 import type { Config } from '../config/schema.js';
+import { OIDC_SCOPES } from './scopes.js';
 import type { Store } from '../store/store.js';
 import type { AppRegistration } from '../store/types.js';
 
@@ -28,11 +29,14 @@ export type ResolveResult =
 /**
  * Resolve a client-credentials `scope` to a token `aud` + resource app per #8's resolution order.
  *
- * The `scope` must be exactly one `<resource>/.default` value; mixing in OIDC scopes
- * (`openid`/`offline_access`) or any non-`.default` scope is rejected as `invalid_scope`. The
- * `<resource>` is matched against, in order: the configured Graph resource id (→ `aud` = Graph id,
- * no resource app); a registered app's `app_id_uri` (→ `aud` = that URI string); a registered app's
- * `app_id` GUID (→ `aud` = that GUID). An unresolvable resource is `invalid_scope`.
+ * The `scope` must resolve to exactly one `<resource>/.default` value once OIDC scopes
+ * (`openid`/`profile`/`email`/`offline_access`) are ignored: MSAL always appends these to a
+ * client-credentials request, and real Entra ID accepts that request, so requiring the caller to
+ * omit them would make every MSAL client fail. Any remaining non-`.default` or multiple
+ * non-OIDC scopes are still rejected as `invalid_scope`. The `<resource>` is matched against, in
+ * order: the configured Graph resource id (→ `aud` = Graph id, no resource app); a registered
+ * app's `app_id_uri` (→ `aud` = that URI string); a registered app's `app_id` GUID (→ `aud` = that
+ * GUID). An unresolvable resource is `invalid_scope`.
  */
 export function resolveClientCredentialScope(
   rawScope: string | undefined,
@@ -47,17 +51,23 @@ export function resolveClientCredentialScope(
       description: 'Missing required parameter: scope.',
     };
   }
-  if (tokens.length > 1) {
+  const resourceTokens = tokens.filter((t) => !OIDC_SCOPES.has(t));
+  if (resourceTokens.length === 0) {
     return {
       ok: false,
       error: 'invalid_scope',
-      description:
-        'Client credentials requires exactly one <resource>/.default scope; OIDC scopes ' +
-        '(openid/offline_access) and additional scopes are not permitted.',
+      description: 'Client credentials requires a <resource>/.default scope.',
+    };
+  }
+  if (resourceTokens.length > 1) {
+    return {
+      ok: false,
+      error: 'invalid_scope',
+      description: 'Client credentials requires exactly one <resource>/.default scope.',
     };
   }
 
-  const scope = tokens[0];
+  const scope = resourceTokens[0];
   if (scope === undefined || !scope.endsWith(DEFAULT_SUFFIX)) {
     return {
       ok: false,
