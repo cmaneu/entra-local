@@ -166,7 +166,7 @@ describe('token service — delegated access token (criterion 3)', () => {
   });
   afterEach(() => fx.close());
 
-  it('carries scp/azp/appid/oid and the resource audience, no roles', async () => {
+  it('carries scp/azp/appid/oid and the resource audience, roles=[] with none granted', async () => {
     const res = await fx.service.buildTokenResponse({
       app: fx.spa,
       user: fx.alice,
@@ -181,9 +181,36 @@ describe('token service — delegated access token (criterion 3)', () => {
     expect(claims.appid).toBe(fx.spa.appId);
     expect(claims.oid).toBe(fx.alice.id);
     expect(claims.aud).toBe(fx.spa.appId); // api:// uri resolves to the resource app's appId
-    expect(claims.roles).toBeUndefined();
+    expect(claims.roles).toEqual([]);
     expect(claims.sub).toBe(pairwiseSub(fx.alice.id, fx.spa.appId, TEST_TENANT_ID));
     expect(res.scope).toBe('openid profile email offline_access access_as_user');
+  });
+
+  it('auto-grants enabled User-typed app roles on the resolved resource app', async () => {
+    fx.ts.store.apps.addRole(fx.spa.appId, {
+      value: 'ROLE_ADMIN',
+      allowedMemberTypes: 'User',
+      isEnabled: true,
+    });
+    fx.ts.store.apps.addRole(fx.spa.appId, {
+      value: 'Disabled.Role',
+      allowedMemberTypes: 'User',
+      isEnabled: false,
+    });
+    fx.ts.store.apps.addRole(fx.spa.appId, {
+      value: 'App.Only',
+      allowedMemberTypes: 'Application',
+      isEnabled: true,
+    });
+    const res = await fx.service.buildTokenResponse({
+      app: fx.spa,
+      user: fx.alice,
+      scopes: DELEGATED_SCOPES,
+      resource: SPA_RESOURCE,
+      grant: 'authorization_code',
+    });
+    const claims = decodeJwt(res.access_token);
+    expect(claims.roles).toEqual(['ROLE_ADMIN']);
   });
 
   it('defaults audience to the Graph resource when no resource scope is requested', async () => {

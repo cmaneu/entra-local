@@ -412,3 +412,24 @@ describe('token conformance (criterion 10)', () => {
     expect(clientInfo.utid).toBe(T);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Delegated role auto-grant survives rotation — the shared token-response builder recomputes it.
+// ---------------------------------------------------------------------------
+describe('delegated access-token role auto-grant on rotation', () => {
+  it('carries the resource app auto-granted User-typed roles in the rotated access token', async () => {
+    ctx = await buildTestApp();
+    ctx.app.store.apps.addRole(SPA, {
+      value: 'ROLE_ADMIN',
+      allowedMemberTypes: 'User',
+      isEnabled: true,
+    });
+    const token = issueRefresh(ctx);
+    const res = await redeem(ctx, { refresh_token: token, client_id: SPA });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as RefreshBody;
+    const set = await jwks(ctx);
+    const access = await jwtVerify(body.access_token as string, set);
+    expect(access.payload.roles).toEqual(['ROLE_ADMIN']);
+  });
+});
