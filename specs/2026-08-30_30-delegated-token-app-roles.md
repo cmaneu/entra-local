@@ -1,7 +1,6 @@
-# Issue #29 — Emit `roles` in Delegated (User) Access Tokens
+# Issue #30 — Emit `roles` in Delegated (User) Access Tokens
 
-- **Issue:** Not yet filed; implementation proceeding ahead of issue acceptance at the requester's
-  direction. To be reconciled with an accepted issue before merge.
+- **Issue:** [#30 — Emit roles in delegated (user) access tokens](https://github.com/cmaneu/entra-local/issues/30).
 - **Roadmap ref:** Compatibility follow-up to Iteration 1 feature #5 (Token Service) and feature #8
   (Client Credentials), which introduced the `roles` claim and its app-role auto-grant model for
   app-only tokens only.
@@ -173,7 +172,6 @@ site in `src/identity/token.ts` unchanged.
 - The shared `rolesForMemberType` helper lives under `src/identity/` (not `src/tokens/`) because
   `src/tokens/service.ts` already imports from `src/identity/` (`buildIssuer`), so this direction of
   dependency is an established pattern in this codebase.
-- This spec proceeds without a pre-existing accepted GitHub issue, at the requester's explicit
-  direction; `CONTRIBUTING.md`'s normal "open an issue before you open a pull request" gate still
-  applies before this branch is merged and must be reconciled (an issue opened/linked) prior to
-  merge.
+- Issue [#30](https://github.com/cmaneu/entra-local/issues/30) was filed to satisfy `CONTRIBUTING.md`'s
+  "open an issue before you open a pull request" gate; implementation on this branch preceded the
+  issue filing at the requester's explicit direction.
