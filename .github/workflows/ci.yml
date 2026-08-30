@@ -224,6 +224,70 @@ jobs:
         if: always()
         run: kill "$EMULATOR_PID" 2>/dev/null || true
 
+  # Java Azure Identity client-credentials sample (#28, java-client-credentials): build + start the
+  # emulator, then run the real Azure Identity (MSAL4J) client-credentials smoke. Azure Identity
+  # always appends the OIDC companion scopes `openid profile offline_access` to a client-credentials
+  # request, which is the exact compatibility issue #28 reports; the smoke asserts that request is
+  # accepted and that `GET /graph/v1.0/users` returns 200. No cloud tenant or external identity
+  # endpoint is contacted (instance discovery disabled). Also asserts the sample README is present.
+  java-client-credentials-sample:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Set up JDK 17 (Azure Identity sample)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Install emulator dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build emulator
+        run: pnpm run build
+
+      - name: Start emulator (seeded, TLS) on :8443
+        env:
+          # Loopback compat origin (see the note in the full-stack job) so the sample's default
+          # https://localhost:8443 matches the issuer/authority the emulator advertises.
+          PUBLIC_ORIGIN: https://localhost:8443
+        run: |
+          nohup pnpm start > emulator.log 2>&1 &
+          echo "EMULATOR_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 30); do
+            if curl -ksS https://localhost:8443/health | grep -q '"status":"ok"'; then
+              echo "emulator healthy"; exit 0
+            fi
+            sleep 2
+          done
+          echo "emulator did not become healthy"; cat emulator.log; exit 1
+
+      - name: Assert the sample README is present
+        run: test -f samples/java-client-credentials/README.md
+
+      - name: Run the client-credentials smoke (real Azure Identity / MSAL4J)
+        working-directory: samples/java-client-credentials
+        env:
+          EMULATOR_CA_CERT: ${{ github.workspace }}/data/tls/cert.pem
+        run: |
+          mvn -B -q compile exec:java -Dexec.args=--smoke | tee smoke.log
+          grep -q '^SMOKE_OK' smoke.log
+
+      - name: Tear down background services
+        if: always()
+        run: kill "$EMULATOR_PID" 2>/dev/null || true
+
   # Run-targets (#14): prove the hardened image actually builds, runs as the published port is
   # reachable from the HOST (HOST=0.0.0.0), the HEALTHCHECK goes healthy, env passthrough works,
   # and the data volume persists the DB + auto-generated cert across a stop/start. Maps to

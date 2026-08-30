@@ -1,0 +1,16 @@
+version: '3.8'
+
+# Optional: launches only the Entra Local emulator, matching the other samples' convention.
+# Build the emulator image from the repo root first: `docker build -t entra-local .`
+services:
+  entra-local:
+    image: entra-local
+    ports:
+      - '8443:8443'
+    environment:
+      PUBLIC_ORIGIN: https://localhost:8443
+    volumes:
+      - entra-local-data:/app/data
+
+volumes:
+  entra-local-data:

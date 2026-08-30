@@ -281,6 +281,17 @@ describe('scope validation (criterion 5)', () => {
     expect((res.json() as CcBody).token_type).toBe('Bearer');
   });
 
+  it('normalizes the response scope to the effective .default only, never echoing OIDC companions', async () => {
+    ctx = await buildTestApp();
+    const res = await token(ctx, {
+      client_id: DAEMON,
+      client_secret: SEED.daemonSecret,
+      scope: `openid profile offline_access ${DAEMON_DEFAULT}`,
+    });
+    expect(res.statusCode).toBe(200);
+    expect((res.json() as CcBody).scope).toBe(DAEMON_DEFAULT);
+  });
+
   it('accepts .default combined with offline_access alone', async () => {
     ctx = await buildTestApp();
     const res = await token(ctx, {
@@ -298,6 +309,28 @@ describe('scope validation (criterion 5)', () => {
       client_id: DAEMON,
       client_secret: SEED.daemonSecret,
       scope: 'openid profile',
+    });
+    expect(res.statusCode).toBe(400);
+    expect((res.json() as CcBody).error).toBe('invalid_scope');
+  });
+
+  it('rejects email as an unrecognized extra (not one of the MSAL companion scopes)', async () => {
+    ctx = await buildTestApp();
+    const res = await token(ctx, {
+      client_id: DAEMON,
+      client_secret: SEED.daemonSecret,
+      scope: `email ${DAEMON_DEFAULT}`,
+    });
+    expect(res.statusCode).toBe(400);
+    expect((res.json() as CcBody).error).toBe('invalid_scope');
+  });
+
+  it('rejects a duplicated companion scope as invalid_scope', async () => {
+    ctx = await buildTestApp();
+    const res = await token(ctx, {
+      client_id: DAEMON,
+      client_secret: SEED.daemonSecret,
+      scope: `openid openid ${DAEMON_DEFAULT}`,
     });
     expect(res.statusCode).toBe(400);
     expect((res.json() as CcBody).error).toBe('invalid_scope');
