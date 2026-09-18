@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { TENANT_ENDPOINTS, tenantRoute } from '../http/pathmap.js';
 import { tenantGuard } from '../http/tenant.js';
+import { buildIssuer } from '../identity/metadata.js';
 import { createSigningService, type SigningService } from './keys.js';
 
 declare module 'fastify' {
@@ -45,11 +46,12 @@ function registerJwksRoute(app: FastifyInstance): void {
     (_request: FastifyRequest, reply: FastifyReply): void => {
       // Aliases (common/organizations/consumers/GUID) all map to the one configured tenant.
       const jwks = app.signing.listJwks(app.config.tenantId);
+      const issuer = buildIssuer(app.config);
       void reply
         .code(200)
         .header('cache-control', 'public, max-age=86400')
         .type('application/json')
-        .send(jwks);
+        .send({ keys: jwks.keys.map((key) => ({ ...key, issuer })) });
     },
   );
 }

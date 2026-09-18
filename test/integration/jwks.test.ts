@@ -4,9 +4,10 @@ import { join } from 'node:path';
 import { createLocalJWKSet, jwtVerify, SignJWT } from 'jose';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../src/app.js';
+import { SEED } from '../../src/store/seed.js';
 import { buildTestApp, type TestApp } from '../helpers/buildTestApp.js';
 import { makeTestConfig, TEST_TENANT_ID, TMP_DIR } from '../helpers/constants.js';
-import { TEST_SIGNING_KID } from '../helpers/signingKeyFixture.js';
+import { testSigningKey, TEST_SIGNING_KID } from '../helpers/signingKeyFixture.js';
 
 const JWKS_URL = `/${TEST_TENANT_ID}/discovery/v2.0/keys`;
 
@@ -44,23 +45,56 @@ describe('JWKS endpoint shape (criterion 2)', () => {
     for (const priv of ['d', 'p', 'q', 'dp', 'dq', 'qi']) {
       expect(key).not.toHaveProperty(priv);
     }
-    expect(Object.keys(key).sort()).toEqual(['alg', 'e', 'kid', 'kty', 'n', 'use']);
+    expect(Object.keys(key).sort()).toEqual(['alg', 'e', 'issuer', 'kid', 'kty', 'n', 'use']);
   });
 });
 
 describe('JWKS endpoint alias parity (criterion 3)', () => {
-  it('returns the same key set for the GUID and every literal alias', async () => {
-    ctx = await buildTestApp();
-    const bodies: string[] = [];
-    for (const tenant of [TEST_TENANT_ID, 'common', 'organizations', 'consumers']) {
-      const res = await ctx.inject({ method: 'GET', url: `/${tenant}/discovery/v2.0/keys` });
-      expect(res.statusCode, tenant).toBe(200);
-      bodies.push(res.body);
-    }
-    for (const body of bodies) {
-      expect(body).toBe(bodies[0]);
-    }
-  });
+  it.each([undefined, 'https://issuer.example.test/custom/v2.0'])(
+    'aligns every published key issuer with discovery and token iss for all aliases (override: %s)',
+    async (issuer) => {
+      ctx = await buildTestApp(issuer === undefined ? undefined : { issuer });
+      const expectedIssuer = issuer ?? `http://localhost:8443/${TEST_TENANT_ID}/v2.0`;
+      ctx.app.store.signingKeys.insert({
+        ...testSigningKey(),
+        kid: 'retained-inactive',
+        isActive: false,
+        notAfter: null,
+      });
+      const token = await ctx.app.tokenService.buildTokenResponse({
+        app: ctx.app.store.apps.getByAppId(SEED.appDaemonId)!,
+        scopes: [],
+        grant: 'client_credentials',
+      });
+      const bodies: string[] = [];
+      for (const tenant of [TEST_TENANT_ID, 'common', 'organizations', 'consumers']) {
+        const res = await ctx.inject({ method: 'GET', url: `/${tenant}/discovery/v2.0/keys` });
+        const discovery = await ctx.inject({
+          method: 'GET',
+          url: `/${tenant}/v2.0/.well-known/openid-configuration`,
+        });
+        expect(res.statusCode, tenant).toBe(200);
+        expect(discovery.statusCode, tenant).toBe(200);
+        const metadata = discovery.json() as { issuer: string };
+        expect(metadata.issuer).toBe(expectedIssuer);
+        const body = res.json() as JwkSetBody;
+        expect(body.keys.map((key) => key.kid).sort()).toEqual(
+          [TEST_SIGNING_KID, 'retained-inactive'].sort(),
+        );
+        const { payload } = await jwtVerify(token.access_token, createLocalJWKSet(body), {
+          issuer: metadata.issuer,
+        });
+        expect(payload.iss).toBe(expectedIssuer);
+        for (const key of body.keys) {
+          expect(key.issuer).toBe(payload.iss);
+        }
+        bodies.push(res.body);
+      }
+      for (const body of bodies) {
+        expect(body).toBe(bodies[0]);
+      }
+    },
+  );
 
   it('rejects an unknown tenant with a JSON 404 (never the SPA)', async () => {
     ctx = await buildTestApp();
