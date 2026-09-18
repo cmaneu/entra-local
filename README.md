@@ -66,7 +66,8 @@ surface MSAL needs for the most common developer scenarios. Treat anything not l
 
 **Protocol surface**
 
-- OIDC discovery (`.well-known/openid-configuration`) and JWKS.
+- OIDC discovery (`.well-known/openid-configuration`) and JWKS. Each published key includes an
+  `issuer` matching discovery and token `iss`, including tenant aliases and explicit `ISSUER` overrides.
 - `authorize`, `token`, `devicecode`, `userinfo`, and front-channel `logout`.
 - Real RS256-signed ID and access tokens, verifiable against the JWKS endpoint.
 - Minimal Microsoft Graph: read-only `/me`, `/users`, `/groups`.
