@@ -1,0 +1,12 @@
+services:
+  emulator:
+    image: ghcr.io/cmaneu/entra-local:latest
+    ports:
+      - "8443:8443"
+    environment:
+      PUBLIC_ORIGIN: https://localhost:8443
+    volumes:
+      - entra-local-obo-data:/app/data
+
+volumes:
+  entra-local-obo-data:

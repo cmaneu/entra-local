@@ -35,6 +35,7 @@ Seeded users (dev-only credentials): `alice@entralocal.dev` / `bob@entralocal.de
 | [`node-cli/`](./node-cli/README.md)                      | `@azure/msal-node` console app          | The **Device Authorization Grant** (RFC 8628) for a browserless CLI: a public client (app `…0001`) prints a code, you approve in a browser, and it calls Microsoft Graph `/me`. |
 | [`dotnet-console/`](./dotnet-console/README.md)         | MSAL.NET console app                   | The **Authorization Code + PKCE** flow with system browser sign-in and **form_post response mode** (RFC 8693): a public client (app `…0001`) signs in, acquires a Graph-audience access token, and calls Microsoft Graph `/me`. |
 | [`fullstack-spa-api/`](./fullstack-spa-api/README.md)    | `@azure/msal-browser` SPA + Express API | A SPA (app `…0004`) acquiring a delegated token **for a separate API app** (`…0005`) and the API validating it — the canonical "SPA → protected API" flow, one app registration per tier. |
+| [`obo-spa-api/`](./obo-spa-api/README.md)                | `@azure/msal-browser` + Express + `@azure/msal-node` | A three-tier SPA (`…0008`) → confidential API (`…0009`) → local Graph `/me` **On-Behalf-Of** flow with user identity continuity. |
 
 > More samples (vanilla/React SPA, Node web/daemon, Python console) are specified
 > under [`../specs/`](../specs/) and will land alongside these.
@@ -64,6 +65,6 @@ a deliberately small overage limit (`3`).
 - **Certificate trust** is documented per sample (no helper scripts) — typically
   `NODE_EXTRA_CA_CERTS` for Node tiers.
 - Samples that call the built-in **Microsoft Graph** endpoints request Graph-audience scopes
-  (`User.Read`, `https://graph.microsoft.com/.default`); only the full-stack sample uses a custom
-  `api://…/access_as_user` scope, because its own API validates that audience.
+  (`User.Read`, `https://graph.microsoft.com/.default`); the full-stack and OBO samples use custom
+  `api://…/access_as_user` scopes because their APIs validate those audiences.
 - Each sample ships an **optional `docker-compose.yml`** that launches only the emulator.

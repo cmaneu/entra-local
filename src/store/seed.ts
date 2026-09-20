@@ -51,6 +51,14 @@ export const SEED = {
   tokenApiScopeId: 'dddddddd-0000-0000-0000-000000000004',
   tokenApiScopeValue: 'access_as_user',
   webClientRedirectUri: 'http://localhost:3000',
+  /** OBO SPA → confidential middle-tier API sample (#28). */
+  appOboSpaId: 'cccccccc-0000-0000-0000-000000000008',
+  appOboApiId: 'cccccccc-0000-0000-0000-000000000009',
+  oboApiScopeId: 'dddddddd-0000-0000-0000-000000000005',
+  oboApiScopeValue: 'access_as_user',
+  oboApiSecretId: 'ffffffff-0000-0000-0000-000000000002',
+  oboSpaRedirectUri: 'http://localhost:5174',
+  oboApiSecret: 'obo-middle-tier-secret',
   /** Group overage limit on the sample apps — deliberately small so a 4-group user overflows. */
   sampleGroupOverageLimit: 3,
   groupDevelopersId: 'bbbbbbbb-0000-0000-0000-000000000002',
@@ -348,6 +356,55 @@ export function seed(db: Database, clock: Clock, options: SeedOptions): SeedResu
       SEED.appTokenApiId,
       SEED.tokenApiScopeValue,
       'Access the local API as the signed-in user',
+    );
+
+    // OBO sample (#28): public browser client calls a confidential middle-tier API. The middle tier
+    // authenticates with its known development-only secret when exchanging the incoming token.
+    run(
+      `INSERT OR IGNORE INTO app_registrations
+         (app_id, tenant_id, display_name, is_confidential, app_id_uri, created_at)
+       VALUES (?, ?, ?, 0, ?, ?)`,
+      SEED.appOboSpaId,
+      options.tenantId,
+      'Sample OBO SPA',
+      `api://${SEED.appOboSpaId}`,
+      now,
+    );
+    run(
+      `INSERT OR IGNORE INTO app_redirect_uris (app_id, uri, type) VALUES (?, ?, ?)`,
+      SEED.appOboSpaId,
+      SEED.oboSpaRedirectUri,
+      'spa',
+    );
+    run(
+      `INSERT OR IGNORE INTO app_registrations
+         (app_id, tenant_id, display_name, is_confidential, app_id_uri, created_at)
+       VALUES (?, ?, ?, 1, ?, ?)`,
+      SEED.appOboApiId,
+      options.tenantId,
+      'Sample OBO Middle-tier API',
+      `api://${SEED.appOboApiId}`,
+      now,
+    );
+    run(
+      `INSERT OR IGNORE INTO app_scopes
+         (id, app_id, value, admin_consent_display_name, is_enabled)
+       VALUES (?, ?, ?, ?, 1)`,
+      SEED.oboApiScopeId,
+      SEED.appOboApiId,
+      SEED.oboApiScopeValue,
+      'Access the OBO middle-tier API as the signed-in user',
+    );
+    run(
+      `INSERT OR IGNORE INTO app_secrets
+         (id, app_id, display_name, secret_hash, hint, expires_at, created_at)
+       VALUES (?, ?, ?, ?, ?, NULL, ?)`,
+      SEED.oboApiSecretId,
+      SEED.appOboApiId,
+      'OBO sample secret',
+      hashSecret(SEED.oboApiSecret),
+      `${SEED.oboApiSecret.slice(0, 3)}…${SEED.oboApiSecret.slice(-2)}`,
+      now,
     );
 
     return { inserted };

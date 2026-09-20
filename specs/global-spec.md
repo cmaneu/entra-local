@@ -81,7 +81,7 @@ same protocols as Entra ID, so an app written with **MSAL** (any platform) can p
 | UserInfo endpoint | ✅ | OIDC userinfo from access token. |
 | Implicit flow | ❌ | Out of scope. |
 | ROPC (password grant) | ❌ | Out of scope. |
-| On-Behalf-Of (OBO) | ❌ | Roadmap. |
+| On-Behalf-Of (OBO) | ✅ | Delegated JWT bearer exchange for one downstream resource. |
 | SAML 2.0 / WS-Fed | ❌ | Out of scope. |
 
 ---

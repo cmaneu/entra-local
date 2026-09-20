@@ -170,3 +170,9 @@ lockfile; `package-lock.json` is not used. Build scripts that invoke sub-scripts
 <script>`. The `pnpm-workspace.yaml` at the repo root holds pnpm-level config (currently:
 `allowBuilds` for esbuild). Sample apps under `samples/` are standalone npm projects and are
 explicitly excluded from the pnpm workspace — they keep their own `package-lock.json` and use npm.
+
+### OBO sample identifiers and ports (#28)
+The standalone three-tier sample lives at `samples/obo-spa-api/`. Its public SPA uses fixed app ID
+`cccccccc-0000-0000-0000-000000000008`, redirect/port `http://localhost:5174`; its confidential
+middle-tier API uses app ID `cccccccc-0000-0000-0000-000000000009`, port `4001`, exposed scope
+`access_as_user`, and the documented dev-only secret `obo-middle-tier-secret`.

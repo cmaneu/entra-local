@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { openDatabase } from '../../src/store/db.js';
 import { runMigrations } from '../../src/store/migrations/index.js';
+import { SEED } from '../../src/store/seed.js';
 import { createStore } from '../../src/store/store.js';
 import { buildTestApp } from '../helpers/buildTestApp.js';
 import { TEST_TENANT_ID, TMP_DIR } from '../helpers/constants.js';
@@ -100,10 +101,10 @@ describe('store plugin: seed determinism (criterion 3)', () => {
       expect(count(db, 'users')).toBe(2);
       expect(count(db, 'groups')).toBe(4);
       expect(count(db, 'group_members')).toBe(6);
-      expect(count(db, 'app_registrations')).toBe(6);
-      expect(count(db, 'app_redirect_uris')).toBe(3);
-      expect(count(db, 'app_scopes')).toBe(4);
-      expect(count(db, 'app_secrets')).toBe(1);
+      expect(count(db, 'app_registrations')).toBe(8);
+      expect(count(db, 'app_redirect_uris')).toBe(4);
+      expect(count(db, 'app_scopes')).toBe(5);
+      expect(count(db, 'app_secrets')).toBe(2);
       expect(count(db, 'app_roles')).toBe(1);
       expect(count(db, 'signing_keys')).toBe(1); // #3 bootstrap seeds/generates the active key
 
@@ -139,6 +140,19 @@ describe('store plugin: seed determinism (criterion 3)', () => {
       expect(ctx.app.store.apps.listScopes(api!.appId).map((s) => s.value)).toEqual([
         'access_as_admin',
         'access_as_user',
+      ]);
+
+      const oboSpa = ctx.app.store.apps.getByAppId(SEED.appOboSpaId);
+      expect(oboSpa?.isConfidential).toBe(false);
+      expect(ctx.app.store.apps.listRedirectUris(oboSpa!.appId).map((r) => r.uri)).toContain(
+        SEED.oboSpaRedirectUri,
+      );
+      const oboApi = ctx.app.store.apps.getByAppId(SEED.appOboApiId);
+      expect(oboApi?.isConfidential).toBe(true);
+      expect(oboApi?.appIdUri).toBe(`api://${SEED.appOboApiId}`);
+      expect(ctx.app.store.apps.verifySecret(oboApi!.appId, SEED.oboApiSecret)).toBe(true);
+      expect(ctx.app.store.apps.listScopes(oboApi!.appId).map((s) => s.value)).toEqual([
+        SEED.oboApiScopeValue,
       ]);
     } finally {
       await ctx.close();
