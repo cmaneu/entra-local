@@ -128,6 +128,7 @@ assume Iterations 1-2 are ✅ (every documented endpoint and config option exist
 | Signing-key rotation UI | Keys are persisted/stable; manual rotation is a polish feature |
 | Consent screen / scope-consent modeling | Local dev tool auto-consents; consent UX adds friction without MVP value |
 | Directory import/export (JSON fixtures) | Seed/reset covers reproducibility for now |
+| External identity provider federation (simulated "Sign in with Google/Apple") | Investigated in [issue #35](https://github.com/cmaneu/entra-local/issues/35); design captured in [`specs/investigations/2026-09-26_35-external-identities-report.md`](investigations/2026-09-26_35-external-identities-report.md) and [`...-specifications.md`](investigations/2026-09-26_35-external-identities-specifications.md). Real network calls to Google/Apple are out of scope (breaks offline/no-cloud-dependency goal); a simulated-federation mechanism is proposed but not yet scheduled — pending maintainer prioritization |
 
 ## Challenges & Mitigation
 | Challenge | Mitigation |
