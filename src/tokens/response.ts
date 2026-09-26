@@ -1,4 +1,5 @@
 import type { Config } from '../config/schema.js';
+import { rolesForMemberType } from '../identity/appRoles.js';
 import type { Store } from '../store/store.js';
 import type { AppRegistration, User } from '../store/types.js';
 import {
@@ -119,8 +120,10 @@ export function createTokenResponseBuilder(deps: TokenResponseBuilderDeps): Toke
       // whose appId equals the resolved audience), never the client — unless the client is the
       // audience. When the audience is Graph or an unregistered resource there is no config to apply.
       const accessClaims: Record<string, unknown> = {};
+      let delegatedRoles: string[] = [];
       if (delegated) {
         const resourceApp = store.apps.getByAppId(audience);
+        delegatedRoles = rolesForMemberType(resourceApp ?? null, store, 'User');
         if (resourceApp) {
           const resolved = resolveAppTokenClaims({
             app: resourceApp,
@@ -147,6 +150,7 @@ export function createTokenResponseBuilder(deps: TokenResponseBuilderDeps): Toke
             scopes: params.scopes,
             now,
             lifetimeSeconds: accessLifetime,
+            roles: delegatedRoles,
           })
         : buildAppOnlyAccessClaims({
             app: params.app,

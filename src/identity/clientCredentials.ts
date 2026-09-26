@@ -1,4 +1,5 @@
 import type { Config } from '../config/schema.js';
+import { rolesForMemberType } from './appRoles.js';
 import type { Store } from '../store/store.js';
 import type { AppRegistration } from '../store/types.js';
 
@@ -93,19 +94,9 @@ export function resolveClientCredentialScope(
  * Auto-grant model (MVP): the `roles` claim is the `value`s of all **enabled** `app_roles` on the
  * resolved resource app whose `allowed_member_types` includes `Application`. Graph or no such roles
  * → empty array. There is no per-client assignment table (documented divergence from real Entra,
- * analogous to the auto-consent decision).
+ * analogous to the auto-consent decision). Delegated tokens use the same model via
+ * `rolesForMemberType(..., 'User')` in `tokens/response.ts`.
  */
 export function autoGrantedRoles(resourceApp: AppRegistration | null, store: Store): string[] {
-  if (!resourceApp) return [];
-  return store.apps
-    .listRoles(resourceApp.appId)
-    .filter(
-      (role) =>
-        role.isEnabled &&
-        role.allowedMemberTypes
-          .split(',')
-          .map((t) => t.trim())
-          .includes('Application'),
-    )
-    .map((role) => role.value);
+  return rolesForMemberType(resourceApp, store, 'Application');
 }

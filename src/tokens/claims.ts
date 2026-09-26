@@ -52,7 +52,7 @@ export interface AccessTokenClaims {
   oid?: string;
   /** Delegated only: space-delimited granted resource scope names. */
   scp?: string;
-  /** App-only only: granted app role values. */
+  /** Auto-granted app role values (app-only: `Application`-typed; delegated: `User`-typed). */
   roles?: string[];
   /** Configurable optional/group claims (feature: token configuration) are merged in at issuance. */
   [claim: string]: unknown;
@@ -163,9 +163,11 @@ export interface DelegatedAccessClaimsParams {
   scopes: readonly string[];
   now: number;
   lifetimeSeconds: number;
+  /** Auto-granted `User`-typed app roles on the resolved resource app (see `identity/appRoles.ts`). */
+  roles?: readonly string[];
 }
 
-/** Assemble a delegated (user) access-token claim set: `oid`/`scp`, no `roles`. */
+/** Assemble a delegated (user) access-token claim set: `oid`/`scp`, plus auto-granted `roles`. */
 export function buildDelegatedAccessClaims(params: DelegatedAccessClaimsParams): AccessTokenClaims {
   const { user, app, tenantId, issuer, audience, scopes, now, lifetimeSeconds } = params;
   return {
@@ -180,6 +182,7 @@ export function buildDelegatedAccessClaims(params: DelegatedAccessClaimsParams):
     azp: app.appId,
     appid: app.appId,
     scp: scpValue(scopes),
+    roles: [...(params.roles ?? [])],
     ver: TOKEN_VERSION,
   };
 }

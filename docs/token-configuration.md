@@ -26,10 +26,30 @@ The portal **Token configuration** card and the token-preview endpoint both make
 
 ---
 
+## `roles` claim (app-role auto-grant)
+
+Both app-only and delegated access tokens carry a `roles` claim, always present as an array
+(`[]` when nothing is granted). It is **not** part of the optional-claims configuration above and
+cannot be turned off — it is derived automatically from the resolved **resource/API** app's
+registered app roles:
+
+| Token flow                          | `roles` = enabled app roles on the resource app whose `allowedMemberTypes` includes… |
+| ------------------------------------ | ------------------------------------------------------------------------------------- |
+| Client credentials (app-only)         | `Application`                                                                         |
+| Authorization Code / Refresh Token (delegated) | `User`                                                                        |
+
+There is no per-client or per-user role **assignment** — every client (app-only) or signed-in user
+(delegated) receives every matching enabled role on the resource app. This is a deliberate MVP
+divergence from real Entra ID's assignment model, consistent with the emulator's auto-consent
+shortcut; see `memory/decisions.md`.
+
+---
+
 ## Supported optional claims
 
 Unsupported optional claims are **preserved** in the app configuration (so nothing is lost) but are
 **never emitted**, and the token endpoint logs a warning. The portal flags them as `unsupported`.
+
 
 **ID token**
 

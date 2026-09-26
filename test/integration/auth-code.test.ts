@@ -860,6 +860,75 @@ describe('token shape + JWKS verification (criterion 8)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Delegated role auto-grant — mirrors #8's app-only auto-grant, but for User-typed roles.
+// ---------------------------------------------------------------------------
+describe('delegated access-token role auto-grant', () => {
+  async function jwks(app: TestApp): Promise<ReturnType<typeof createLocalJWKSet>> {
+    const res = await app.inject({ method: 'GET', url: `/${T}/discovery/v2.0/keys` });
+    return createLocalJWKSet(JSON.parse(res.body) as JSONWebKeySet);
+  }
+
+  it('includes enabled User-typed app roles on the resolved resource app', async () => {
+    ctx = await buildTestApp();
+    ctx.app.store.apps.addRole(SPA, {
+      value: 'ROLE_ADMIN',
+      allowedMemberTypes: 'User',
+      isEnabled: true,
+    });
+    ctx.app.store.apps.addRole(SPA, {
+      value: 'Disabled.Role',
+      allowedMemberTypes: 'User',
+      isEnabled: false,
+    });
+    ctx.app.store.apps.addRole(SPA, {
+      value: 'App.Only',
+      allowedMemberTypes: 'Application',
+      isEnabled: true,
+    });
+    const verifier = randomBytes(32).toString('base64url');
+    const result = await signInAndGetCode(ctx, { codeChallenge: s256(verifier) });
+    const token = await ctx.inject({
+      method: 'POST',
+      url: TOKEN_PATH,
+      headers: FORM_HEADERS,
+      payload: form({
+        grant_type: 'authorization_code',
+        code: result.code,
+        redirect_uri: REDIRECT,
+        client_id: SPA,
+        code_verifier: verifier,
+      }),
+    });
+    const body = token.json() as { access_token: string };
+    const set = await jwks(ctx);
+    const { payload } = await jwtVerify(body.access_token, set);
+    expect(payload.roles).toEqual(['ROLE_ADMIN']);
+  });
+
+  it('returns roles=[] when the resource app has no matching enabled User-typed roles', async () => {
+    ctx = await buildTestApp();
+    const verifier = randomBytes(32).toString('base64url');
+    const result = await signInAndGetCode(ctx, { codeChallenge: s256(verifier) });
+    const token = await ctx.inject({
+      method: 'POST',
+      url: TOKEN_PATH,
+      headers: FORM_HEADERS,
+      payload: form({
+        grant_type: 'authorization_code',
+        code: result.code,
+        redirect_uri: REDIRECT,
+        client_id: SPA,
+        code_verifier: verifier,
+      }),
+    });
+    const body = token.json() as { access_token: string };
+    const set = await jwks(ctx);
+    const { payload } = await jwtVerify(body.access_token, set);
+    expect(payload.roles).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Criterion 9 — canonical error convention (each row: error + status + no-store)
 // ---------------------------------------------------------------------------
 describe('canonical OAuth error convention (criterion 9)', () => {
