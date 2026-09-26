@@ -279,7 +279,7 @@ async function handleClientCredentials(
     });
     return;
   }
-  const { aud, resourceApp } = resolution.resolved;
+  const { aud, resourceApp, effectiveScope } = resolution.resolved;
   const roles = autoGrantedRoles(resourceApp, ctx.store);
 
   const tokenResponse = await ctx.tokenService.buildTokenResponse({
@@ -291,9 +291,11 @@ async function handleClientCredentials(
     roles,
   });
 
-  // Echo the requested `<resource>/.default` scope verbatim (the response envelope), matching how
-  // MSAL keys its app-only access-token cache. The minted token carries `roles`, not `scp`.
-  tokenResponse.scope = field(body, 'scope') ?? '';
+  // Echo only the effective `<resource>/.default` scope (the response envelope), matching how
+  // MSAL keys its app-only access-token cache. Per #28, OIDC companion scopes the caller sent
+  // (openid/profile/offline_access) are never echoed back — they weren't granted as delegated
+  // permissions in this app-only flow. The minted token carries `roles`, not `scp`.
+  tokenResponse.scope = effectiveScope;
 
   void reply
     .code(200)

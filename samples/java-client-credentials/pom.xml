@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>dev.entralocal.sample</groupId>
+  <artifactId>java-client-credentials</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+
+  <!--
+    Standalone sample (like the other samples/ projects): not part of the root pnpm workspace,
+    built and run independently with its own Maven reactor. See README.md for prerequisites.
+  -->
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- Latest stable releases as of authoring; see README.md for why the JDK HttpClient
+         transport (rather than the Netty default) was chosen for this sample. -->
+    <azure.identity.version>1.16.2</azure.identity.version>
+    <azure.core.http.jdk.version>1.1.7</azure.core.http.jdk.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-identity</artifactId>
+      <version>${azure.identity.version}</version>
+    </dependency>
+    <!-- azure-core requires an HttpClient implementation on the classpath. The JDK HttpClient
+         transport (java.net.http, JDK 11+) is used here instead of the Netty default so this
+         sample can hand Azure Identity the exact same java.net.http.HttpClient (and its dev-only
+         SSLContext) used for the plain Graph call below, in one place (Trust.java). -->
+    <dependency>
+      <groupId>com.azure</groupId>
+      <artifactId>azure-core-http-jdk-httpclient</artifactId>
+      <version>${azure.core.http.jdk.version}</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>java-client-credentials</finalName>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.14.0</version>
+      </plugin>
+      <!-- `mvn compile exec:java` runs the sample without a separate package/assembly step. -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <configuration>
+          <mainClass>dev.entralocal.sample.ClientCredentialsSample</mainClass>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
