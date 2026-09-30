@@ -72,6 +72,7 @@ surface MSAL needs for the most common developer scenarios. Treat anything not l
 - Real RS256-signed ID and access tokens, verifiable against the JWKS endpoint.
 - Minimal Microsoft Graph: read-only `/me`, `/users`, `/groups`.
 - Admin REST API + web portal to manage users, groups, and app registrations.
+- [Direct user app-role assignments](docs/user-app-roles.md) through the admin API, emitted as `roles` in ID tokens.
 
 ### ❌ Not emulated
 

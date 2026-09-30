@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { adminErrorHandler, adminNotFound } from './errors.js';
 import { registerAppRoutes } from './routes.apps.js';
 import { registerGroupRoutes } from './routes.groups.js';
+import { registerRoleAssignmentRoutes } from './routes.roleAssignments.js';
 import { registerSystemRoutes } from './routes.system.js';
 import { registerUserRoutes } from './routes.users.js';
 
@@ -21,6 +22,7 @@ export async function registerAdminApi(app: FastifyInstance): Promise<void> {
       registerUserRoutes(admin);
       registerGroupRoutes(admin);
       registerAppRoutes(admin);
+      registerRoleAssignmentRoutes(admin);
       registerSystemRoutes(admin);
 
       done();
