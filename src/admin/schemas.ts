@@ -156,6 +156,11 @@ export const rolePatchSchema = z
   })
   .partial();
 
+export const roleAssignmentSchema = z.object({
+  roleId: z.string().min(1),
+  userId: z.string().min(1),
+});
+
 // --- System --------------------------------------------------------------------------------------
 
 export const seedSchema = z

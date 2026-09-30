@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { readFileSync, rmSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer as createHttpsServer, type Server as HttpsServer } from 'node:https';
 import { request as httpsRequest } from 'node:https';
 import { createServer as createNetServer } from 'node:net';
@@ -184,6 +184,18 @@ afterAll(async () => {
 
 describe('real-MSAL Auth Code + PKCE e2e (criterion 10)', () => {
   it('completes interactive sign-in and caches JWKS-verifiable ID + access tokens', async () => {
+    const role = await server.app.inject({
+      method: 'POST',
+      url: `/admin/api/apps/${SEED.appSpaId}/roles`,
+      payload: { value: 'console.operator', allowedMemberTypes: ['User'] },
+    });
+    expect(role.statusCode).toBe(201);
+    const assignment = await server.app.inject({
+      method: 'POST',
+      url: `/admin/api/apps/${SEED.appSpaId}/roleAssignments`,
+      payload: { roleId: (role.json() as { id: string }).id, userId: SEED.userAliceId },
+    });
+    expect(assignment.statusCode).toBe(204);
     const page = await context.newPage();
     await page.goto(`${spaOrigin}/`, { waitUntil: 'load' });
 
@@ -237,10 +249,28 @@ describe('real-MSAL Auth Code + PKCE e2e (criterion 10)', () => {
     expect(id.payload.iss).toBe(discovery.issuer);
     expect(id.payload.aud).toBe(SEED.appSpaId);
     expect(id.payload.preferred_username).toBe('alice@entralocal.dev');
+    expect(id.payload.roles).toEqual(['console.operator']);
 
     const access = await jwtVerify(result.accessToken as string, jwks);
     expect(access.payload.scp).toContain(SEED.spaScopeValue);
 
+    writeFileSync(
+      join(TMP_DIR, 'user-id-token-roles-replay.json'),
+      JSON.stringify(
+        {
+          command: 'bun run test:e2e -- test/e2e/auth-code.e2e.ts',
+          inputs: {
+            clientId: SEED.appSpaId,
+            userId: SEED.userAliceId,
+            assignedRole: 'console.operator',
+          },
+          expected: { roles: ['console.operator'], cached: true, signature: 'valid' },
+          observed: { roles: id.payload.roles, cached: result.fromCache, signature: 'valid' },
+        },
+        null,
+        2,
+      ),
+    );
     await page.close();
   }, 90_000);
 });

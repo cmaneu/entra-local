@@ -5,6 +5,10 @@ import { createAuthCodesRepository, type AuthCodesRepository } from './authCodes
 import { createDeviceCodesRepository, type DeviceCodesRepository } from './deviceCodes.js';
 import { createGroupsRepository, type GroupsRepository } from './groups.js';
 import { createRefreshTokensRepository, type RefreshTokensRepository } from './refreshTokens.js';
+import {
+  createRoleAssignmentsRepository,
+  type RoleAssignmentsRepository,
+} from './roleAssignments.js';
 import { createSessionsRepository, type SessionsRepository } from './sessions.js';
 import { createSigningKeysRepository, type SigningKeysRepository } from './signingKeys.js';
 import { createTenantsRepository, type TenantsRepository } from './tenants.js';
@@ -16,6 +20,7 @@ export interface Repositories {
   users: UsersRepository;
   groups: GroupsRepository;
   apps: AppsRepository;
+  roleAssignments: RoleAssignmentsRepository;
   signingKeys: SigningKeysRepository;
   authCodes: AuthCodesRepository;
   refreshTokens: RefreshTokensRepository;
@@ -30,6 +35,7 @@ export function createRepositories(db: Database, clock: Clock): Repositories {
     users: createUsersRepository(db, clock),
     groups: createGroupsRepository(db, clock),
     apps: createAppsRepository(db, clock),
+    roleAssignments: createRoleAssignmentsRepository(db),
     signingKeys: createSigningKeysRepository(db, clock),
     authCodes: createAuthCodesRepository(db, clock),
     refreshTokens: createRefreshTokensRepository(db, clock),
@@ -44,6 +50,7 @@ export type {
   DeviceCodesRepository,
   GroupsRepository,
   RefreshTokensRepository,
+  RoleAssignmentsRepository,
   SessionsRepository,
   SigningKeysRepository,
   TenantsRepository,

@@ -192,7 +192,7 @@ export interface ResolveAppTokenClaimsParams {
   ipAddress?: string;
 }
 
-/** Combined optional + group claim resolution for one token collection. */
+/** Combined optional, group, and assigned ID-token role claims for one token collection. */
 export interface ResolveAppTokenClaimsResult {
   /** Extra claims to merge into the token payload (may include the overage claim payload). */
   claims: Record<string, unknown>;
@@ -204,7 +204,8 @@ export interface ResolveAppTokenClaimsResult {
 
 /**
  * Resolve every configured optional + group claim for one token collection, applying the supported
- * set, value sourcing, and group overage rules. Used by both token issuance and the admin preview.
+ * set, value sourcing, and group overage rules, plus assigned client roles in ID tokens.
+ * Used by both token issuance and the admin preview.
  */
 export function resolveAppTokenClaims(
   params: ResolveAppTokenClaimsParams,
@@ -217,8 +218,9 @@ export function resolveAppTokenClaims(
     ipAddress,
   });
   const group = resolveGroupClaims(app, kind, user, store, config);
+  const roles = kind === 'idToken' ? store.roleAssignments.values(app.appId, user.id) : [];
   return {
-    claims: { ...optional.claims, ...group.claims },
+    claims: { ...optional.claims, ...group.claims, ...(roles.length > 0 ? { roles } : {}) },
     unsupportedClaims: optional.unsupported,
     groupOverage: group.overage,
   };
