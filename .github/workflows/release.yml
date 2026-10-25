@@ -120,10 +120,21 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ github.event.release.tag_name }}" "dist-sea/${{ matrix.asset }}" --clobber
 
-  # Build the hardened runtime image and push it to ghcr.io/<owner>/<repo> (GitHub Packages).
-  docker:
+  # Build the hardened runtime image on a native runner for each platform. A release pushes each
+  # platform image by digest; the `docker` job then joins them under the user-facing tags.
+  docker-build:
     needs: test
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch: amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
 
@@ -143,23 +154,81 @@ jobs:
         if: github.event_name == 'release'
         run: npm version "${{ steps.meta.outputs.version }}" --no-git-tag-version --allow-same-version
 
-      - name: Build image
-        run: docker build -t entra-local:release .
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
         if: github.event_name == 'release'
         run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-      - name: Tag and push image
-        if: github.event_name == 'release'
+      - name: Build ${{ matrix.platform }} image
+        env:
+          EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
-          image="${{ steps.meta.outputs.image }}"
-          version="${{ steps.meta.outputs.version }}"
-          docker tag entra-local:release "$image:$version"
-          docker push "$image:$version"
-          # Only move `:latest` for a full (non-prerelease) Release.
-          if [ "${{ github.event.release.prerelease }}" != "true" ]; then
-            docker tag entra-local:release "$image:latest"
-            docker push "$image:latest"
+          if [ "$EVENT_NAME" = "release" ]; then
+            docker buildx build \
+              --platform "${{ matrix.platform }}" \
+              --output "type=image,name=${{ steps.meta.outputs.image }},push-by-digest=true,name-canonical=true,push=true" \
+              --metadata-file /tmp/build-metadata.json .
+            mkdir -p /tmp/digests
+            digest=$(jq -r '."containerimage.digest"' /tmp/build-metadata.json)
+            touch "/tmp/digests/${digest#sha256:}"
+          else
+            # Keep workflow_dispatch as a build-only dry-run; do not push any image.
+            docker buildx build \
+              --platform "${{ matrix.platform }}" \
+              --output "type=oci,dest=/tmp/entra-local-${{ matrix.arch }}.tar" .
           fi
+
+      - name: Upload ${{ matrix.platform }} digest
+        if: github.event_name == 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-digest-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # Join the platform images into one multi-platform image under the release tags.
+  docker:
+    needs: docker-build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download platform digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: docker-digest-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Publish multi-platform image tags
+        env:
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        shell: bash
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          version="${RELEASE_TAG#v}"
+          tags=(--tag "$image:$version")
+          # Only publish :latest for a full (non-prerelease) Release.
+          if [ "$RELEASE_PRERELEASE" != "true" ]; then
+            tags+=(--tag "$image:latest")
+          fi
+          sources=()
+          for digest_file in /tmp/digests/*; do
+            sources+=("$image@sha256:$(basename "$digest_file")")
+          done
+          if [ "${#sources[@]}" -ne 2 ]; then
+            echo "Expected 2 platform digests, found ${#sources[@]}." >&2
+            exit 1
+          fi
+          docker buildx imagetools create "${tags[@]}" "${sources[@]}"
+          docker buildx imagetools inspect "$image:$version"

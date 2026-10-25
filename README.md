@@ -128,8 +128,10 @@ docker run -p 8443:8443 -v entra-local-data:/app/data ghcr.io/cmaneu/entra-local
 The image is a hardened multi-stage build (Node 24 base for the built-in `node:sqlite`
 driver), runs as a **non-root** user, and ships only the runtime (compiled server + prebuilt
 portal asset + production dependencies — no React/Vite/test toolchain). It declares a
-`HEALTHCHECK` that polls `/health` over TLS and a `VOLUME` at `/app/data`. `:latest` tracks the
-newest full release; pin a specific version with `ghcr.io/cmaneu/entra-local:<version>`.
+`HEALTHCHECK` that polls `/health` over TLS and a `VOLUME` at `/app/data`. Published images include
+both `linux/amd64` and `linux/arm64`; Docker selects the matching platform when you pull. `:latest`
+tracks the newest full release; pin a specific version with
+`ghcr.io/cmaneu/entra-local:<version>`.
 
 - **Persistence:** mount a named volume at **`/app/data`** so the SQLite DB and the
   auto-generated cert (stable fingerprint) survive `docker stop`/`docker start` and upgrades.
@@ -265,8 +267,9 @@ re-runs the full lint/typecheck/build/test gate and then publishes the distribut
 - **Single-file binaries** — built per OS (Node SEA does not cross-compile), smoke-tested, and
   attached to the Release as `entra-local-linux-x64`, `entra-local-windows-x64.exe`, and
   `entra-local-macos-arm64`.
-- **Docker image** — pushed to the GitHub Container Registry (part of GitHub Packages) at
-  `ghcr.io/cmaneu/entra-local`, tagged with the release version (and `latest` for a full,
+- **Docker image** — built on matching AMD64 and ARM64 GitHub runners, then pushed to the GitHub
+  Container Registry (part of GitHub Packages) at `ghcr.io/cmaneu/entra-local` as one image for
+  both `linux/amd64` and `linux/arm64`, tagged with the release version (and `latest` for a full,
   non-prerelease Release):
 
   ```bash

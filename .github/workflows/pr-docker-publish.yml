@@ -17,7 +17,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  docker-publish:
+  docker-publish-prepare:
     # Only run for PR comments (issues lack the `pull_request` key) that contain one of the
     # recognised trigger phrases. GitHub Actions `contains()` is case-insensitive by default.
     if: |
@@ -29,6 +29,13 @@ jobs:
         contains(github.event.comment.body, '#docker publish')
       )
     runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.pr.outputs.sha }}
+      number: ${{ steps.pr.outputs.number }}
+      image: ${{ steps.meta.outputs.image }}
+      short_sha: ${{ steps.meta.outputs.short_sha }}
+      pr_tag: ${{ steps.meta.outputs.pr_tag }}
+      version_tag: ${{ steps.meta.outputs.version_tag }}
     steps:
       # Acknowledge the trigger immediately by reacting with 👀 on the comment so the author
       # knows the build has kicked in, even before the (slower) image build starts.
@@ -53,10 +60,6 @@ jobs:
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "number=${{ github.event.issue.number }}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.pr.outputs.sha }}
-
       - name: Derive image name, short SHA, and PR tag
         id: meta
         shell: bash
@@ -67,29 +70,92 @@ jobs:
           echo "pr_tag=dev-pr-${{ steps.pr.outputs.number }}" >> "$GITHUB_OUTPUT"
           echo "version_tag=dev-pr-${{ steps.pr.outputs.number }}-${sha}" >> "$GITHUB_OUTPUT"
 
-      - name: Build image
-        run: docker build -t entra-local:pr .
+  # Build each platform on a native runner and push it by digest. The publish job adds the tags.
+  docker-publish-build:
+    needs: docker-publish-prepare
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - platform: linux/amd64
+            arch: amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.docker-publish-prepare.outputs.sha }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
         run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-      # Tag with the full commit SHA, the PR mutable tag, and a persistent PR-version tag.
-      # The PR tag always points to the latest publish for this PR; the SHA tag is immutable.
-      # The version tag keeps every version discoverable for cleanup after the PR tag moves.
-      # Never move or create the `latest` tag.
-      - name: Tag and push image
+      - name: Build and push ${{ matrix.platform }} image by digest
         shell: bash
         run: |
-          image="${{ steps.meta.outputs.image }}"
-          sha="${{ steps.pr.outputs.sha }}"
-          pr_tag="${{ steps.meta.outputs.pr_tag }}"
-          version_tag="${{ steps.meta.outputs.version_tag }}"
-          docker tag entra-local:pr "$image:$sha"
-          docker push "$image:$sha"
-          docker tag entra-local:pr "$image:$pr_tag"
-          docker push "$image:$pr_tag"
-          docker tag entra-local:pr "$image:$version_tag"
-          docker push "$image:$version_tag"
+          image="${{ needs.docker-publish-prepare.outputs.image }}"
+          docker buildx build \
+            --platform "${{ matrix.platform }}" \
+            --output "type=image,name=$image,push-by-digest=true,name-canonical=true,push=true" \
+            --metadata-file /tmp/build-metadata.json .
+          mkdir -p /tmp/digests
+          digest=$(jq -r '."containerimage.digest"' /tmp/build-metadata.json)
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload ${{ matrix.platform }} digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-digest-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  docker-publish:
+    needs: [docker-publish-prepare, docker-publish-build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download platform digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: docker-digest-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      # Publish one multi-platform image index with the full commit SHA, the PR mutable tag,
+      # and a persistent PR-version tag. Cleanup continues to find all versions by those tags.
+      # Never move or create the `latest` tag.
+      - name: Publish multi-platform image tags
+        shell: bash
+        run: |
+          image="${{ needs.docker-publish-prepare.outputs.image }}"
+          sha="${{ needs.docker-publish-prepare.outputs.sha }}"
+          pr_tag="${{ needs.docker-publish-prepare.outputs.pr_tag }}"
+          version_tag="${{ needs.docker-publish-prepare.outputs.version_tag }}"
+          sources=()
+          for digest_file in /tmp/digests/*; do
+            sources+=("$image@sha256:$(basename "$digest_file")")
+          done
+          if [ "${#sources[@]}" -ne 2 ]; then
+            echo "Expected 2 platform digests, found ${#sources[@]}." >&2
+            exit 1
+          fi
+          docker buildx imagetools create \
+            --tag "$image:$sha" \
+            --tag "$image:$pr_tag" \
+            --tag "$image:$version_tag" \
+            "${sources[@]}"
+          docker buildx imagetools inspect "$image:$version_tag"
 
       # Report the published reference back to the PR so reviewers can pull it immediately.
       # Write the body to a temp file to avoid shell quoting issues with the multi-line string.
@@ -98,13 +164,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          image="${{ steps.meta.outputs.image }}"
-          sha="${{ steps.pr.outputs.sha }}"
-          short_sha="${{ steps.meta.outputs.short_sha }}"
-          pr_tag="${{ steps.meta.outputs.pr_tag }}"
+          image="${{ needs.docker-publish-prepare.outputs.image }}"
+          sha="${{ needs.docker-publish-prepare.outputs.sha }}"
+          short_sha="${{ needs.docker-publish-prepare.outputs.short_sha }}"
+          pr_tag="${{ needs.docker-publish-prepare.outputs.pr_tag }}"
+          pr_number="${{ needs.docker-publish-prepare.outputs.number }}"
           body_file=$(mktemp)
           {
-            echo "🐳 Docker image published for commit \`${short_sha}\` (PR #${{ steps.pr.outputs.number }}):"
+            echo "🐳 Docker image published for commit \`${short_sha}\` (PR #${pr_number}):"
             echo ""
             echo '```bash'
             echo "docker pull ${image}:${pr_tag}"
@@ -117,7 +184,7 @@ jobs:
             echo ""
             echo "> These dev images are deleted automatically when the PR is closed."
           } > "$body_file"
-          gh pr comment "${{ steps.pr.outputs.number }}" \
+          gh pr comment "$pr_number" \
             --repo "${{ github.repository }}" \
             --body-file "$body_file"
           rm -f "$body_file"
@@ -157,6 +224,12 @@ jobs:
             echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
       - name: Delete PR image versions from GHCR
         id: cleanup
         env:
@@ -164,6 +237,7 @@ jobs:
         shell: bash
         run: |
           package_name="${GITHUB_REPOSITORY#*/}"
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
           pr_tag="dev-pr-${{ steps.pr.outputs.number }}"
           owner_type=$(gh api "/repos/${GITHUB_REPOSITORY}" --jq '.owner.type')
 
@@ -174,14 +248,52 @@ jobs:
             base_url="/users/${GITHUB_REPOSITORY_OWNER}/packages/container/${package_name}"
           fi
 
+          versions_file=$(mktemp)
+          gh api --paginate "${base_url}/versions" --jq '.[] | @json' > "$versions_file"
+
+          # Each tagged multi-platform image points to untagged platform images. Collect those
+          # digests so cleanup removes the full PR image, but keep any digest still used by an
+          # image that is not tagged for this PR.
+          child_digests() {
+            docker buildx imagetools inspect --raw "$image@$1" 2>/dev/null \
+              | jq -r '.manifests[]?.digest' || true
+          }
+          # shellcheck disable=SC2016 # `$pr_tag` is a jq variable, not a shell variable.
+          is_pr_version='any(.metadata.container.tags[]?; . == $pr_tag or startswith($pr_tag + "-"))'
+          pr_digests=$(jq -r --arg pr_tag "$pr_tag" "select($is_pr_version) | .name" "$versions_file")
+          other_digests=$(jq -r --arg pr_tag "$pr_tag" \
+            "select((.metadata.container.tags | length) > 0 and ($is_pr_version | not)) | .name" \
+            "$versions_file")
+
+          delete_digests=$(
+            {
+              printf '%s\n' "$pr_digests"
+              while read -r digest; do
+                if [ -n "$digest" ]; then child_digests "$digest"; fi
+              done <<< "$pr_digests"
+            } | sed '/^$/d' | sort -u
+          )
+          protected_digests=$(
+            while read -r digest; do
+              if [ -n "$digest" ]; then child_digests "$digest"; fi
+            done <<< "$other_digests" | sed '/^$/d' | sort -u
+          )
+          if [ -n "$protected_digests" ]; then
+            delete_digests=$(comm -23 <(printf '%s\n' "$delete_digests") <(printf '%s\n' "$protected_digests"))
+          fi
+
           # Delete package versions, not individual tags. The exact mutable tag finds the
-          # latest image; the persistent prefix finds every earlier image for the PR.
-          jq_filter=".[] | select(any(
-            .metadata.container.tags[]?;
-            . == \"${pr_tag}\" or startswith(\"${pr_tag}-\")
-          )) | .id"
-          version_ids=$(gh api --paginate "${base_url}/versions" \
-            --jq "$jq_filter")
+          # latest image; the persistent prefix finds every earlier image for the PR. Delete
+          # tagged images before their platform images.
+          # shellcheck disable=SC2016 # `$name` and `$digests` are jq variables.
+          select_digests='select(.name as $name | $digests | split("\n") | any(. == $name))'
+          version_ids=$(
+            jq -r --arg pr_tag "$pr_tag" --rawfile digests <(printf '%s\n' "$delete_digests") \
+              "$select_digests | select($is_pr_version) | .id" "$versions_file"
+            jq -r --arg pr_tag "$pr_tag" --rawfile digests <(printf '%s\n' "$delete_digests") \
+              "$select_digests | select($is_pr_version | not) | .id" "$versions_file"
+          )
+          rm -f "$versions_file"
 
           if [ -z "$version_ids" ]; then
             echo "No image versions found for tag ${pr_tag} — nothing to delete."
